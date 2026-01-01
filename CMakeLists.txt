@@ -52,7 +52,7 @@ add_executable(asioscan
         # src/scanner/scanner.hpp
         #
         # Result models
-        # src/result/port_result.hpp
+        src/result/port_result.hpp
         # src/result/host_result.hpp
         # src/result/scan_summary.hpp
         #
