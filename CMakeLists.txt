@@ -41,11 +41,11 @@ add_executable(asioscan
         # --------------------------------------------------------
         # CLI parsing (add files here later)
         # src/cli/cli_parser.cpp
-        src/cli/cli_parser.hpp
+        # src/cli/cli_parser.hpp
         #
         # Scan configuration
         # src/config/scan_config.cpp
-        # src/config/scan_config.hpp
+        src/config/scan_config.hpp
         #
         # Scanner engine (Boost.Asio logic)
         # src/scanner/scanner.cpp
