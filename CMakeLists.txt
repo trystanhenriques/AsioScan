@@ -41,7 +41,7 @@ add_executable(asioscan
         # --------------------------------------------------------
         # CLI parsing (add files here later)
         # src/cli/cli_parser.cpp
-        # src/cli/cli_parser.hpp
+        src/cli/cli_parser.hpp
         #
         # Scan configuration
         # src/config/scan_config.cpp
