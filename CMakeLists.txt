@@ -53,7 +53,7 @@ add_executable(asioscan
         #
         # Result models
         src/result/port_result.hpp
-        # src/result/host_result.hpp
+        src/result/host_result.hpp
         # src/result/scan_summary.hpp
         #
         # Output formatters
