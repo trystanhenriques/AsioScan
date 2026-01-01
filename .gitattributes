@@ -1,0 +1,52 @@
+# =====================================================
+# Default: normalize text files to LF in repository
+# =====================================================
+* text=auto eol=lf
+
+# =====================================================
+# Source code (always LF)
+# =====================================================
+*.c     text eol=lf
+*.cpp   text eol=lf
+*.h     text eol=lf
+*.hpp   text eol=lf
+*.inl   text eol=lf
+
+# =====================================================
+# Build / config files
+# =====================================================
+CMakeLists.txt text eol=lf
+*.cmake        text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.json         text eol=lf
+*.toml         text eol=lf
+
+# =====================================================
+# Scripts
+# =====================================================
+*.sh    text eol=lf
+*.bash  text eol=lf
+*.py    text eol=lf
+
+# =====================================================
+# Documentation
+# =====================================================
+*.md    text eol=lf
+*.txt   text eol=lf
+
+# =====================================================
+# Binary files (never touched by Git)
+# =====================================================
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.zip   binary
+*.exe   binary
+*.dll   binary
+*.lib   binary
+*.a     binary
+*.so    binary
+*.dylib binary
