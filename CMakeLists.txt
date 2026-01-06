@@ -29,7 +29,7 @@ endif()
 # Find Boost (only what we need)
 # Boost.Asio requires Boost.System
 # ------------------------------------------------------------
-find_package(Boost CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system)
 
 # ------------------------------------------------------------
 # Main executable
@@ -78,7 +78,7 @@ target_include_directories(asioscan
 # ------------------------------------------------------------
 target_link_libraries(asioscan
         PRIVATE
-        Boost::headers
+        Boost::system
 )
 
 # ------------------------------------------------------------
@@ -97,7 +97,3 @@ if (WIN32)
     )
 endif()
 
-target_compile_definitions(asioscan
-        PRIVATE
-        BOOST_ERROR_CODE_HEADER_ONLY
-)
