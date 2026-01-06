@@ -26,10 +26,16 @@ else()
 endif()
 
 # ------------------------------------------------------------
-# Find Boost (only what we need)
-# Boost.Asio requires Boost.System
+# Find Boost (cross-platform: vcpkg on Windows, Homebrew on macOS)
 # ------------------------------------------------------------
-find_package(Boost REQUIRED COMPONENTS system)
+if (WIN32)
+    # Windows (vcpkg): use FindBoost module
+    find_package(Boost REQUIRED COMPONENTS system)
+else()
+    # macOS/Linux (Homebrew, system packages): use BoostConfig.cmake
+    find_package(Boost CONFIG REQUIRED)
+endif()
+
 
 # ------------------------------------------------------------
 # Main executable
