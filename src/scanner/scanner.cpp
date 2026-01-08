@@ -2,7 +2,7 @@
 
 
 
-#include <utility>   // std::move
+#include <utility>
 
 namespace asioscan {
 
@@ -34,19 +34,47 @@ public:
 
     ~Impl() = default;
 
-    // Entry point for scan execution (stub for Phase 1)
+    // Entry point for scan execution
     ScanSummary run() {
         ScanSummary summary;
         summary.config = config_;
 
-        // NOTE:
-        // start_time / end_time will be set in Phase 2.
-        // hosts will be populated in later phases.
+        // Record scan start time
+        summary.start_time = std::chrono::steady_clock::now();
+
+        /*
+         * Iterate over configured target hosts.
+         *
+         * At this stage:
+         *  - No ports are scanned
+         *  - Port vectors remain empty
+         *  - Host timing is still meaningful (setup overhead)
+         */
+        for (const auto& host_name : config_.targets) {
+            HostResult host_result;
+            host_result.host = host_name;
+
+            // Host scan lifecycle (even with no ports)
+            host_result.start_time = std::chrono::steady_clock::now();
+            host_result.end_time   = host_result.start_time;
+
+            // ports vector intentionally left empty
+
+            summary.hosts.push_back(std::move(host_result));
+
+            // Optional callback notification
+            if (callbacks_.on_host_complete) {
+                callbacks_.on_host_complete(summary.hosts.back());
+            }
+        }
+
+        // Record scan end time
+        summary.end_time = std::chrono::steady_clock::now();
 
         return summary;
     }
 
-    // Request cancellation (stub for Phase 1)
+    // Request cancellation
     void cancel() noexcept {
         cancel_requested_ = true;
     }
@@ -59,7 +87,7 @@ private:
     // Immutable snapshot of scan configuration
     ScanConfig config_;
 
-    // Optional progress callbacks
+    // optional progress callbacks
     ScannerCallbacks callbacks_;
 
     // Cancellation flag (checked by async logic)
