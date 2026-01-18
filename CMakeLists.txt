@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ------------------------------------------------------------
-# Compiler warnings (safe across platforms)
+# Compiler warnings
 # ------------------------------------------------------------
 if (MSVC)
     add_compile_options(/W4)
@@ -26,49 +26,16 @@ else()
 endif()
 
 # ------------------------------------------------------------
-# Find Boost (cross-platform: vcpkg on Windows, Homebrew on macOS)
-# ------------------------------------------------------------
-if (WIN32)
-    # Windows (vcpkg): use FindBoost module
-    find_package(Boost REQUIRED COMPONENTS system)
-else()
-    # macOS/Linux (Homebrew, system packages): use BoostConfig.cmake
-    find_package(Boost CONFIG REQUIRED)
-endif()
-
-
-# ------------------------------------------------------------
 # Main executable
 # ------------------------------------------------------------
 add_executable(asioscan
-        # Entry point
         src/main.cpp
 
-        # --------------------------------------------------------
-        # CLI parsing (add files here later)
-        # src/cli/cli_parser.cpp
-        # src/cli/cli_parser.hpp
-        #
-        # Scan configuration
-        # src/config/scan_config.cpp
+        # Configuration / models
         src/config/scan_config.hpp
-        #
-        # Scanner engine (Boost.Asio logic)
-        # src/scanner/scanner.cpp
-        # src/scanner/scanner.hpp
-        #
-        # Result models
         src/result/port_result.hpp
         src/result/host_result.hpp
         src/result/scan_summary.hpp
-        #
-        # Output formatters
-        # src/format/text_formatter.cpp
-        # src/format/xml_formatter.cpp
-        #
-        # Utilities (color, helpers, etc.)
-        # src/util/color.hpp
-        # src/util/net_utils.hpp
 )
 
 # ------------------------------------------------------------
@@ -76,16 +43,36 @@ add_executable(asioscan
 # ------------------------------------------------------------
 target_include_directories(asioscan
         PRIVATE
-        src            # Allows includes like "scanner/scanner.hpp"
+        src
 )
 
 # ------------------------------------------------------------
-# Link Boost libraries
+# Boost (correct cross-platform handling)
+#
+# Windows (vcpkg):
+#   - Uses FindBoost module
+#   - Requires explicit Boost.System linkage
+#
+# macOS (Homebrew):
+#   - Uses BoostConfig.cmake
+#   - Does NOT export Boost::system
+#   - Asio is header-only; system library is resolved implicitly
 # ------------------------------------------------------------
-target_link_libraries(asioscan
+if (WIN32)
+    find_package(Boost REQUIRED COMPONENTS system)
+
+    target_link_libraries(asioscan
         PRIVATE
         Boost::system
-)
+    )
+else()
+    find_package(Boost CONFIG REQUIRED)
+
+    target_link_libraries(asioscan
+        PRIVATE
+        Boost::boost   # headers-only target (this exists on Homebrew)
+    )
+endif()
 
 # ------------------------------------------------------------
 # Windows-specific networking requirement
@@ -95,11 +82,10 @@ if (WIN32)
 endif()
 
 # ------------------------------------------------------------
-# Ensure this is a console application on Windows
+# Ensure console subsystem on Windows
 # ------------------------------------------------------------
 if (WIN32)
     set_target_properties(asioscan PROPERTIES
-            WIN32_EXECUTABLE FALSE
+        WIN32_EXECUTABLE FALSE
     )
 endif()
-
