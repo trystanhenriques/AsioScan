@@ -9,6 +9,8 @@
 #include <chrono>
 #include <stdexcept>
 #include <utility>
+#include <queue>
+#include <memory>
 
 namespace asioscan {
 
@@ -18,11 +20,42 @@ namespace asioscan {
  *
  * Private implementation of the Scanner engine.
  *
- * Responsibilities:
- *  - Own async execution context
- *  - Schedule and execute port scan tasks
- *  - Aggregate results into ScanSummary
- *  - Support cancellation
+ * Phase 4 Architecture:
+ * --------------------
+ * This implementation introduces bounded-concurrency port scanning
+ * for a SINGLE host with MULTIPLE ports.
+ *
+ * Key concepts:
+ *  1. Port Queue: All ports to scan are enqueued at start
+ *  2. In-flight Counter: Tracks active async operations
+ *  3. Max Concurrency: Limits simultaneous connection attempts
+ *  4. Completion-Driven Scheduling: When a port scan finishes,
+ *     the next port is automatically scheduled
+ *  5. Single-Threaded: No threads, mutexes, or atomics
+ *
+ * Why a queue?
+ * -----------
+ * - We need to scan potentially thousands of ports
+ * - We cannot launch all scans simultaneously (resource limits)
+ * - A queue allows us to control the "flow" of work
+ * - Completed scans pull new work from the queue
+ *
+ * How bounded concurrency works:
+ * -----------------------------
+ * - At start: launch up to `max_concurrency` scans
+ * - When ANY scan completes:
+ *   -> decrement in-flight counter
+ *   -> if queue not empty: schedule next port
+ *   -> if queue empty AND in-flight == 0: scanning done
+ * - This creates a "sliding window" of active scans
+ *
+ * Why this is concurrent but single-threaded:
+ * ------------------------------------------
+ * - Concurrency != Parallelism
+ * - Multiple async I/O operations are in-flight simultaneously
+ * - The OS kernel handles actual I/O (connect, timeout)
+ * - io_context multiplexes completion events on ONE thread
+ * - No locking needed: all state mutations happen in handlers
  */
 class Scanner::Impl {
 public:
@@ -35,7 +68,7 @@ public:
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
 
-    // Movable
+    // Non-movable (io_context is non-movable)
     Impl(Impl&&) noexcept = delete;
     Impl& operator=(Impl&&) noexcept = delete;
 
@@ -44,55 +77,105 @@ public:
     // Entry point for scan execution
     ScanSummary run() {
         /*
-         * Phase 3 enforcement:
-         * This implementation supports exactly ONE host and ONE port.
-         * This restriction exists to validate async correctness without
-         * introducing concurrency complexity.
+         * Phase 4 Requirements:
+         * - Exactly ONE host (multi-host is Phase 5+)
+         * - Multiple ports (Phase 4 enhancement)
+         * - Bounded concurrency (NEW)
          */
         if (config_.targets.size() != 1) {
             throw std::invalid_argument(
-                "Phase 3 requires exactly one target host"
+                "Phase 4 requires exactly one target host"
             );
         }
-        if (config_.ports.size() != 1) {
+        if (config_.ports.empty()) {
             throw std::invalid_argument(
-                "Phase 3 requires exactly one port"
+                "No ports specified for scanning"
             );
         }
 
         ScanSummary summary;
         summary.config = config_;
-
-        // Record global scan start time
         summary.start_time = std::chrono::steady_clock::now();
 
-        // Extract the single target and port
         const std::string& target_host = config_.targets[0];
-        const std::uint16_t target_port = config_.ports[0];
 
         // Prepare host result container
-        HostResult host_result;
-        host_result.host = target_host;
-        host_result.start_time = std::chrono::steady_clock::now();
+        current_host_result_ = HostResult{};
+        current_host_result_.host = target_host;
+        current_host_result_.start_time = std::chrono::steady_clock::now();
 
-        // Execute the single port scan
-        PortResult port_result = scan_single_port(target_host, target_port);
+        /*
+         * Build the port queue.
+         *
+         * All ports are enqueued at the start. As scans complete,
+         * ports are dequeued and new scans are initiated.
+         *
+         * This queue-based approach allows us to:
+         *  - Control memory usage (limited in-flight operations)
+         *  - Respect system resource limits
+         *  - Implement sophisticated scheduling policies later
+         */
+        for (std::uint16_t port : config_.ports) {
+            port_queue_.push(port);
+        }
 
-        // Capture host completion time
-        host_result.end_time = std::chrono::steady_clock::now();
+        /*
+         * Initialize concurrency tracking.
+         *
+         * Invariants maintained throughout execution:
+         *  - in_flight_count_ >= 0
+         *  - in_flight_count_ <= max_concurrency
+         *  - When queue is empty AND in_flight_count_ == 0, scan is done
+         */
+        in_flight_count_ = 0;
+        const std::size_t max_concurrency = config_.max_concurrency;
 
-        // Attach port result to host
-        host_result.ports.push_back(std::move(port_result));
+        /*
+         * Kick-start the scan by launching initial batch.
+         *
+         * We schedule up to `max_concurrency` port scans immediately.
+         * Each scan, when it completes, will schedule the next one
+         * (if ports remain in the queue).
+         *
+         * This creates a self-sustaining "conveyor belt" of work.
+         */
+        const std::size_t initial_batch = std::min(
+            max_concurrency,
+            port_queue_.size()
+        );
 
-        // Notify callback (if registered)
+        for (std::size_t i = 0; i < initial_batch; ++i) {
+            schedule_next_port(target_host);
+        }
+
+        /*
+         * Run the event loop.
+         *
+         * This blocks until:
+         *  - All ports have been scanned
+         *  - All async operations have completed
+         *  - io_context has no more work
+         *
+         * The loop exits when the last in-flight scan completes
+         * and sees that both the queue is empty AND in_flight_count_ == 0.
+         */
+        io_context_.run();
+
+        /*
+         * Finalize host result.
+         *
+         * All PortResult objects have been appended to
+         * current_host_result_.ports by the completion handlers.
+         */
+        current_host_result_.end_time = std::chrono::steady_clock::now();
+
+        // Notify host completion callback
         if (callbacks_.on_host_complete) {
-            callbacks_.on_host_complete(host_result);
+            callbacks_.on_host_complete(current_host_result_);
         }
 
         // Attach host to summary
-        summary.hosts.push_back(std::move(host_result));
-
-        // Record global scan end time
+        summary.hosts.push_back(std::move(current_host_result_));
         summary.end_time = std::chrono::steady_clock::now();
 
         return summary;
@@ -109,47 +192,98 @@ public:
 
 private:
     /*
-     * scan_single_port
-     * ----------------
-     * Performs a single asynchronous TCP connect attempt with timeout.
+     * schedule_next_port
+     * ------------------
+     * Dequeues the next port (if available) and initiates an async scan.
      *
-     * This function demonstrates the core async pattern:
-     *  1. Create socket and timer
-     *  2. Initiate async_connect (races with timer)
-     *  3. Initiate async_wait on timer (races with connect)
-     *  4. Whichever completes first wins
-     *  5. Cancel the other operation
-     *  6. Use a completion guard to prevent double-handling
+     * This function is the heart of the bounded-concurrency mechanism:
+     *  - Called at startup to fill the initial "window"
+     *  - Called by completion handlers to keep the window full
+     *  - Respects max_concurrency automatically (caller's responsibility)
      *
-     * Latency measurement:
-     *  - Start time: immediately before initiating async operations
-     *  - End time: when the first operation completes
-     *  - This accurately reflects connection establishment time or timeout duration
-     *
-     * Error classification:
-     *  - Open: successful connect (no error)
-     *  - Closed: connection_refused
-     *  - Filtered: operation_aborted from timer expiration
-     *  - Error: all other errors
+     * Preconditions:
+     *  - port_queue_ is not empty
+     *  - in_flight_count_ < max_concurrency
      */
-    PortResult scan_single_port(
-        const std::string& host,
-        std::uint16_t port
-    ) {
+    void schedule_next_port(const std::string& host) {
+        if (port_queue_.empty()) {
+            return; // No more work
+        }
+
+        if (cancel_requested_) {
+            return; // User requested cancellation
+        }
+
+        // Dequeue next port
+        std::uint16_t port = port_queue_.front();
+        port_queue_.pop();
+
+        // Increment in-flight counter
+        ++in_flight_count_;
+
+        // Launch async scan for this port
+        scan_port_async(host, port);
+    }
+
+    /*
+     * scan_port_async
+     * ---------------
+     * Initiates an asynchronous TCP connect attempt with timeout.
+     *
+     * This is the Phase 3 logic, refactored to:
+     *  - Accept host/port as parameters
+     *  - Store result in shared state (current_host_result_)
+     *  - Call on_port_complete when done
+     *
+     * Key difference from Phase 3:
+     *  - Does NOT call io_context_.run() or io_context_.restart()
+     *  - Those are managed by the top-level run() function
+     *  - Multiple instances of this function run concurrently
+     */
+    void scan_port_async(const std::string& host, std::uint16_t port) {
         using boost::asio::ip::tcp;
         using boost::system::error_code;
 
-        PortResult result;
-        result.port = port;
+        /*
+         * Allocate socket and timer on the heap.
+         *
+         * Why heap allocation?
+         *  - These objects must outlive this function scope
+         *  - They are owned by their completion handlers
+         *  - shared_ptr ensures automatic cleanup when both handlers complete
+         *
+         * This is a standard Boost.Asio pattern for managing
+         * per-operation state in async code.
+         */
+        auto socket = std::make_shared<tcp::socket>(io_context_);
+        auto timer = std::make_shared<boost::asio::steady_timer>(
+            io_context_,
+            config_.timeout
+        );
 
-        // Start latency measurement
+        // Result will be populated by completion handlers
+        auto result = std::make_shared<PortResult>();
+        result->port = port;
+
+        // Latency measurement
         const auto start_time = std::chrono::steady_clock::now();
 
         /*
-         * Resolve the target host to an endpoint.
+         * Completion guard.
          *
-         * For Phase 3, we use synchronous resolution for simplicity.
-         * Later phases may introduce async_resolve.
+         * Shared between both handlers to prevent double-processing.
+         * The first handler to execute sets this to true.
+         */
+        auto completed = std::make_shared<bool>(false);
+
+        /*
+         * Resolve hostname to endpoints.
+         *
+         * For Phase 4, we continue using synchronous resolution.
+         * This is acceptable because:
+         *  - Resolution is per-host, not per-port
+         *  - We only support one host in Phase 4
+         *  - Async resolution will be added in later phases
          */
         tcp::resolver resolver(io_context_);
         error_code resolve_ec;
@@ -162,148 +296,148 @@ private:
 
         if (resolve_ec) {
             // Resolution failed
-            result.state = PortState::Error;
-            result.reason = "Resolution failed: " + resolve_ec.message();
-            result.latency = std::chrono::milliseconds(0);
-            return result;
+            result->state = PortState::Error;
+            result->reason = "Resolution failed: " + resolve_ec.message();
+            result->latency = std::chrono::milliseconds(0);
+            on_port_complete(host, *result);
+            return;
         }
-
-        /*
-         * Create socket and timer.
-         *
-         * Both objects are owned by this function scope.
-         * They will be destroyed when the function returns, which is safe
-         * because io_context.run() is synchronous and completes before return.
-         */
-        tcp::socket socket(io_context_);
-        boost::asio::steady_timer timer(io_context_, config_.timeout);
-
-        /*
-         * Completion guard.
-         *
-         * Prevents double-completion when both async operations fire.
-         * The first operation to complete sets this to true and wins.
-         * The second operation sees true and does nothing.
-         *
-         * This is a manual replacement for strand-based exclusion.
-         */
-        bool completed = false;
 
         /*
          * Initiate async_connect.
          *
-         * This races with the timer. If connect completes first (success or error),
-         * we cancel the timer. If the timer fires first, we cancel the socket.
+         * Captures: socket, timer, result, completed, start_time, host
+         * All captured by value (shared_ptr) to extend lifetime.
          */
         boost::asio::async_connect(
-            socket,
+            *socket,
             endpoints,
-            [&](const error_code& ec, const tcp::endpoint&) {
+            [this, socket, timer, result, completed, start_time, host]
+            (const error_code& ec, const tcp::endpoint&) {
                 // Guard: only the first completion is processed
-                if (completed) {
+                if (*completed) {
                     return;
                 }
-                completed = true;
+                *completed = true;
 
-                // Cancel the timer (best-effort; may already have fired)
-                timer.cancel();
+                // Cancel the timer (best-effort)
+                timer->cancel();
 
                 // Stop latency measurement
                 const auto end_time = std::chrono::steady_clock::now();
-                result.latency = std::chrono::duration_cast<
+                result->latency = std::chrono::duration_cast<
                     std::chrono::milliseconds
                 >(end_time - start_time);
 
                 // Classify connection outcome
                 if (!ec) {
-                    // Successful connect
-                    result.state = PortState::Open;
-                    result.reason = "Connection established";
+                    result->state = PortState::Open;
+                    result->reason = "Connection established";
                 } else if (ec == boost::asio::error::connection_refused) {
-                    // Port is closed (active rejection)
-                    result.state = PortState::Closed;
-                    result.reason = "Connection refused";
+                    result->state = PortState::Closed;
+                    result->reason = "Connection refused";
                 } else if (ec == boost::asio::error::operation_aborted) {
-                    // Socket was cancelled by timer expiration
-                    result.state = PortState::Filtered;
-                    result.reason = "Timeout";
+                    result->state = PortState::Filtered;
+                    result->reason = "Timeout";
                 } else {
-                    // All other errors
-                    result.state = PortState::Error;
-                    result.reason = ec.message();
+                    result->state = PortState::Error;
+                    result->reason = ec.message();
                 }
 
-                // Optional callback notification
-                if (callbacks_.on_port_result) {
-                    callbacks_.on_port_result(host, result);
-                }
+                // Notify completion
+                on_port_complete(host, *result);
             }
         );
 
         /*
          * Initiate timer expiration.
          *
-         * This races with async_connect. If the timer fires first,
-         * we cancel the socket, which causes async_connect to complete
-         * with operation_aborted.
+         * Captures: socket, timer, result, completed, start_time, host
          */
-        timer.async_wait([&](const error_code& ec) {
-            // Guard: only the first completion is processed
-            if (completed) {
-                return;
+        timer->async_wait(
+            [this, socket, timer, result, completed, start_time, host]
+            (const error_code& ec) {
+                // Guard: only the first completion is processed
+                if (*completed) {
+                    return;
+                }
+                *completed = true;
+
+                // If timer was cancelled, do nothing
+                if (ec == boost::asio::error::operation_aborted) {
+                    return;
+                }
+
+                // Timer fired: cancel the socket
+                socket->cancel();
+
+                // Stop latency measurement
+                const auto end_time = std::chrono::steady_clock::now();
+                result->latency = std::chrono::duration_cast<
+                    std::chrono::milliseconds
+                >(end_time - start_time);
+
+                // Classify as filtered
+                result->state = PortState::Filtered;
+                result->reason = "Timeout";
+
+                // Notify completion
+                on_port_complete(host, *result);
             }
-            completed = true;
+        );
+    }
 
-            // If timer was cancelled by successful connect, do nothing
-            if (ec == boost::asio::error::operation_aborted) {
-                return;
-            }
+    /*
+     * on_port_complete
+     * ----------------
+     * Called when a single port scan finishes (success, timeout, or error).
+     *
+     * Responsibilities:
+     *  1. Store the result in current_host_result_
+     *  2. Invoke user callback (if registered)
+     *  3. Decrement in-flight counter
+     *  4. Schedule the next port (if queue not empty)
+     *  5. Detect completion (queue empty + in-flight == 0)
+     *
+     * This function is the "glue" that drives the bounded-concurrency loop.
+     * It ensures that as soon as one scan finishes, another begins
+     * (until we run out of ports).
+     */
+    void on_port_complete(const std::string& host, const PortResult& result) {
+        // Store result
+        current_host_result_.ports.push_back(result);
 
-            // Timer fired: cancel the socket
-            socket.cancel();
+        // Invoke user callback
+        if (callbacks_.on_port_result) {
+            callbacks_.on_port_result(host, result);
+        }
 
-            // Stop latency measurement
-            const auto end_time = std::chrono::steady_clock::now();
-            result.latency = std::chrono::duration_cast<
-                std::chrono::milliseconds
-            >(end_time - start_time);
-
-            // Classify as filtered (timeout)
-            result.state = PortState::Filtered;
-            result.reason = "Timeout";
-
-            // Optional callback notification
-            if (callbacks_.on_port_result) {
-                callbacks_.on_port_result(host, result);
-            }
-        });
+        // Decrement in-flight counter
+        --in_flight_count_;
 
         /*
-         * Run the event loop.
+         * Schedule next port (if available).
          *
-         * This is a blocking call that processes async operations.
-         * It returns when all handlers have been invoked (exactly one
-         * of the two handlers above will fire and set completed = true).
-         *
-         * Why this works:
-         *  - io_context.run() is synchronous from the caller's perspective
-         *  - Internally it drives asynchronous I/O
-         *  - When both operations are complete (one succeeded, one cancelled),
-         *    run() returns
-         *  - This allows Scanner::run() to be a synchronous API while using
-         *    async I/O under the hood
+         * This is the key to bounded concurrency:
+         *  - We just freed up one "slot" in the concurrency window
+         *  - If more ports remain, fill that slot immediately
+         *  - This maintains a steady flow of `max_concurrency` scans
          */
-        io_context_.run();
+        if (!port_queue_.empty()) {
+            schedule_next_port(host);
+        }
 
         /*
-         * Reset the io_context for potential future use.
+         * Completion detection.
          *
-         * This is not needed in Phase 3 (single use), but prepares for
-         * later phases where io_context may be reused across multiple ports.
+         * The scan is complete when:
+         *  - port_queue_ is empty (no more work to schedule)
+         *  - in_flight_count_ == 0 (all scheduled work has finished)
+         *
+         * When this condition is met, io_context.run() will naturally
+         * return because there are no more pending async operations.
          */
-        io_context_.restart();
-
-        return result;
+        // (No explicit action needed; io_context will exit automatically)
     }
 
     // Immutable snapshot of scan configuration
@@ -312,21 +446,48 @@ private:
     // Optional progress callbacks
     ScannerCallbacks callbacks_;
 
-    // Cancellation flag (checked by async logic)
+    // Cancellation flag
     bool cancel_requested_ = false;
+
+    /*
+     * Port queue: all ports waiting to be scanned.
+     *
+     * Invariants:
+     *  - Populated at start of run()
+     *  - Dequeued by schedule_next_port()
+     *  - Empty when all ports have been scheduled
+     */
+    std::queue<std::uint16_t> port_queue_;
+
+    /*
+     * In-flight counter: number of active async port scans.
+     *
+     * Invariants:
+     *  - Incremented by schedule_next_port()
+     *  - Decremented by on_port_complete()
+     *  - Always <= max_concurrency
+     *  - Zero when scan is complete
+     */
+    std::size_t in_flight_count_ = 0;
+
+    /*
+     * Current host result (accumulator).
+     *
+     * As port scans complete, PortResult objects are appended
+     * to current_host_result_.ports.
+     *
+     * This is safe because all mutations happen on the same thread
+     * (within io_context handlers).
+     */
+    HostResult current_host_result_;
 
     /*
      * Boost.Asio execution context.
      *
-     * Responsibilities:
-     *  - Drive asynchronous I/O operations
-     *  - Dispatch completion handlers
-     *  - Manage internal state for sockets, timers, resolvers
-     *
-     * Lifetime:
-     *  - Owned by Scanner::Impl
-     *  - Created once, reused across operations (later phases)
-     *  - Single-threaded model: no external thread pool
+     * Phase 4 changes:
+     *  - io_context.run() is called ONCE at the top level
+     *  - No restart() needed (all async operations are initiated upfront)
+     *  - Automatically exits when queue is empty and in-flight == 0
      */
     boost::asio::io_context io_context_;
 };

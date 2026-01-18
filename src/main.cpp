@@ -8,25 +8,22 @@
 #include <string>
 
 /*
- * Phase 3 Test Harness
+ * Phase 4 Test Harness
  * --------------------
- * This program validates the asynchronous correctness of the scanner engine
- * for exactly ONE host and ONE port.
+ * This program validates bounded-concurrency multi-port scanning
+ * for exactly ONE host.
  *
- * Phase 3 goals:
- *  - Prove async_connect + steady_timer race logic works correctly
- *  - Verify timeout behavior (Filtered state)
- *  - Verify connection refused (Closed state)
- *  - Verify successful connection (Open state)
- *  - Measure latency accurately using steady_clock
+ * Phase 4 goals:
+ *  - Prove port queue + concurrency limiter works correctly
+ *  - Verify multiple ports are scanned concurrently
+ *  - Confirm max_concurrency is respected
+ *  - Validate correct result aggregation
  *
  * Expected outcomes:
- *  - localhost:80 → Open (if HTTP server running)
- *  - localhost:1 → Closed (connection refused)
- *  - 10.255.255.1:80 → Filtered (timeout, non-routable IP)
- *
- * This is NOT a production CLI tool. It is a minimal test to validate
- * the core async behavior before adding concurrency in Phase 4.
+ *  - localhost:20,21,22,23,25,80,110,143,443,3306,5432,8080
+ *    → Mix of Open, Closed, and Filtered states
+ *  - Concurrency of 5 means max 5 in-flight scans at any time
+ *  - All results are collected and returned correctly
  */
 
 using namespace asioscan;
@@ -49,7 +46,7 @@ const char* port_state_to_string(PortState state) {
  */
 void print_results(const ScanSummary& summary) {
     std::cout << "\n========================================\n";
-    std::cout << "Phase 3 Scan Results\n";
+    std::cout << "Phase 4 Scan Results\n";
     std::cout << "========================================\n\n";
 
     // Print overall timing
@@ -79,46 +76,55 @@ void print_results(const ScanSummary& summary) {
 
 int main() {
     /*
-     * Phase 3 Test Configuration
+     * Phase 4 Test Configuration
      * --------------------------
-     * We test exactly ONE host and ONE port to validate async correctness.
-     *
-     * Test scenarios (uncomment one at a time):
-     *  1. localhost:80  → Should be Open if HTTP server running, else Closed
-     *  2. localhost:1   → Should be Closed (connection refused)
-     *  3. 10.255.255.1:80 → Should be Filtered (timeout, non-routable IP)
+     * Scan multiple common ports on localhost to validate
+     * bounded concurrency.
      */
 
-    // Create scan configuration
     ScanConfig config;
 
-    // Test Case 1: localhost:80 (likely Open or Closed)
+    // Target: localhost
     config.targets = {"localhost"};
-    config.ports = {80};
 
-    // Test Case 2: localhost:1 (should be Closed)
-    // config.targets = {"localhost"};
-    // config.ports = {1};
+    // Ports: common services (mix of likely open/closed/filtered)
+    config.ports = {
+        20,    // FTP data
+        21,    // FTP control
+        22,    // SSH
+        23,    // Telnet
+        25,    // SMTP
+        80,    // HTTP
+        110,   // POP3
+        143,   // IMAP
+        443,   // HTTPS
+        3306,  // MySQL
+        5432,  // PostgreSQL
+        8080   // HTTP alternate
+    };
 
-    // Test Case 3: Non-routable IP (should timeout → Filtered)
-    // config.targets = {"10.255.255.1"};
-    // config.ports = {80};
-
-    // Set timeout (Phase 3 default: 500ms)
+    // Timeout: 500ms
     config.timeout = std::chrono::milliseconds(500);
 
-    // Optional: enable verbose mode for future phases
-    config.verbose = false;
+    // Max concurrency: 5 (demonstrates bounded behavior)
+    config.max_concurrency = 5;
 
-    std::cout << "Starting Phase 3 Scanner Test...\n";
+    // Enable verbose mode
+    config.verbose = true;
+
+    std::cout << "========================================\n";
+    std::cout << "Phase 4 Scanner Test\n";
+    std::cout << "========================================\n";
     std::cout << "Target: " << config.targets[0] << "\n";
-    std::cout << "Port: " << config.ports[0] << "\n";
+    std::cout << "Ports: " << config.ports.size() << " ports\n";
     std::cout << "Timeout: " << config.timeout.count() << " ms\n";
+    std::cout << "Max Concurrency: " << config.max_concurrency << "\n";
+    std::cout << "========================================\n\n";
 
     try {
         /*
          * Create scanner with optional callbacks for live progress.
-         * For Phase 3, we keep callbacks minimal.
+         * For Phase 4, we keep callbacks minimal.
          */
         ScannerCallbacks callbacks;
 
@@ -142,10 +148,10 @@ int main() {
          *  - When run() returns, all async operations have finished
          *
          * Expected behavior:
-         *  - One async_connect initiated
-         *  - One steady_timer initiated
-         *  - They race; winner cancels loser
-         *  - PortResult is populated
+         *  - Multiple async_connects initiated (up to max_concurrency)
+         *  - Multiple steady_timers initiated
+         *  - They race; winners cancel losers
+         *  - PortResults are populated
          *  - ScanSummary is returned
          */
         ScanSummary summary = scanner.run();
@@ -153,20 +159,23 @@ int main() {
         // Print formatted results
         print_results(summary);
 
-        // Verify Phase 3 constraints
+        // Verify Phase 4 constraints
         if (summary.total_hosts() != 1) {
             std::cerr << "ERROR: Expected exactly 1 host, got "
                       << summary.total_hosts() << "\n";
             return 1;
         }
 
-        if (summary.total_ports() != 1) {
-            std::cerr << "ERROR: Expected exactly 1 port, got "
-                      << summary.total_ports() << "\n";
+        if (summary.total_ports() != config.ports.size()) {
+            std::cerr << "ERROR: Expected " << config.ports.size()
+                      << " ports, got " << summary.total_ports() << "\n";
             return 1;
         }
 
-        std::cout << "✓ Phase 3 test completed successfully.\n\n";
+        std::cout << "✓ Phase 4 test completed successfully.\n";
+        std::cout << "✓ Scanned " << summary.total_ports() << " ports.\n";
+        std::cout << "✓ Open: " << summary.total_open_ports() << "\n";
+        std::cout << "✓ Duration: " << summary.duration().count() << " ms\n\n";
 
         return 0;
 
