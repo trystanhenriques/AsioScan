@@ -33,6 +33,12 @@ add_executable(asioscan
 
         # Configuration / models
         src/config/scan_config.hpp
+        #
+        # Scanner engine (Boost.Asio logic)
+        src/scanner/scanner.cpp
+        src/scanner/scanner.hpp
+        #
+        # Result models
         src/result/port_result.hpp
         src/result/host_result.hpp
         src/result/scan_summary.hpp
