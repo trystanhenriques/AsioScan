@@ -8,22 +8,21 @@
 #include <string>
 
 /*
- * Phase 4 Test Harness
+ * Phase 5 Test Harness
  * --------------------
- * This program validates bounded-concurrency multi-port scanning
- * for exactly ONE host.
+ * This program validates multi-host scanning with bounded concurrency.
  *
- * Phase 4 goals:
- *  - Prove port queue + concurrency limiter works correctly
- *  - Verify multiple ports are scanned concurrently
- *  - Confirm max_concurrency is respected
- *  - Validate correct result aggregation
+ * Phase 5 goals:
+ *  - Prove multi-host scanning works correctly
+ *  - Verify per-host result aggregation is accurate
+ *  - Confirm bounded concurrency applies globally (across all hosts)
+ *  - Validate host completion detection
  *
  * Expected outcomes:
- *  - localhost:20,21,22,23,25,80,110,143,443,3306,5432,8080
- *    → Mix of Open, Closed, and Filtered states
- *  - Concurrency of 5 means max 5 in-flight scans at any time
- *  - All results are collected and returned correctly
+ *  - Multiple hosts scanned (localhost, 127.0.0.1, google.com)
+ *  - Each host gets an independent HostResult
+ *  - All port results are correctly associated with their host
+ *  - Concurrency limit is respected globally
  */
 
 using namespace asioscan;
@@ -46,7 +45,7 @@ const char* port_state_to_string(PortState state) {
  */
 void print_results(const ScanSummary& summary) {
     std::cout << "\n========================================\n";
-    std::cout << "Phase 4 Scan Results\n";
+    std::cout << "Phase 5 Scan Results\n";
     std::cout << "========================================\n\n";
 
     // Print overall timing
@@ -76,55 +75,54 @@ void print_results(const ScanSummary& summary) {
 
 int main() {
     /*
-     * Phase 4 Test Configuration
+     * Phase 5 Test Configuration
      * --------------------------
-     * Scan multiple common ports on localhost to validate
-     * bounded concurrency.
+     * Scan multiple hosts to validate multi-host support.
      */
 
     ScanConfig config;
 
-    // Target: localhost
-    config.targets = {"localhost"};
+    // Targets: multiple hosts (local + remote)
+    config.targets = {
+        "localhost",
+        "127.0.0.1",
+        "google.com"
+    };
 
-    // Ports: common services (mix of likely open/closed/filtered)
+    // Ports: subset of common services
     config.ports = {
-        20,    // FTP data
-        21,    // FTP control
         22,    // SSH
-        23,    // Telnet
-        25,    // SMTP
         80,    // HTTP
-        110,   // POP3
-        143,   // IMAP
         443,   // HTTPS
-        3306,  // MySQL
-        5432,  // PostgreSQL
         8080   // HTTP alternate
     };
 
-    // Timeout: 500ms
-    config.timeout = std::chrono::milliseconds(500);
+    // Timeout: 1000ms (longer for remote hosts)
+    config.timeout = std::chrono::milliseconds(1000);
 
-    // Max concurrency: 5 (demonstrates bounded behavior)
-    config.max_concurrency = 5;
+    // Max concurrency: 10 (applies globally across all hosts)
+    config.max_concurrency = 10;
 
     // Enable verbose mode
     config.verbose = true;
 
     std::cout << "========================================\n";
-    std::cout << "Phase 4 Scanner Test\n";
+    std::cout << "Phase 5 Scanner Test\n";
     std::cout << "========================================\n";
-    std::cout << "Target: " << config.targets[0] << "\n";
-    std::cout << "Ports: " << config.ports.size() << " ports\n";
+    std::cout << "Targets: " << config.targets.size() << " hosts\n";
+    for (const auto& target : config.targets) {
+        std::cout << "  - " << target << "\n";
+    }
+    std::cout << "Ports per host: " << config.ports.size() << " ports\n";
+    std::cout << "Total tasks: " << (config.targets.size() * config.ports.size()) << "\n";
     std::cout << "Timeout: " << config.timeout.count() << " ms\n";
-    std::cout << "Max Concurrency: " << config.max_concurrency << "\n";
+    std::cout << "Max Concurrency: " << config.max_concurrency << " (global)\n";
     std::cout << "========================================\n\n";
 
     try {
         /*
          * Create scanner with optional callbacks for live progress.
-         * For Phase 4, we keep callbacks minimal.
+         * For Phase 5, we add host-complete callback.
          */
         ScannerCallbacks callbacks;
 
@@ -136,45 +134,54 @@ int main() {
                       << " (" << result.reason << ")\n";
         };
 
+        // Optional: print live host results as they complete
+        callbacks.on_host_complete = [](const HostResult& host_result) {
+            std::cout << "\n[Live] Host " << host_result.host
+                      << " completed in " << host_result.duration().count() << " ms\n";
+            std::cout << "  Open: " << host_result.open_ports()
+                      << ", Closed: " << host_result.closed_ports()
+                      << ", Filtered: " << host_result.filtered_ports() << "\n";
+        };
+
         // Create scanner
         Scanner scanner(config, callbacks);
 
-        /*
-         * Run the scan.
-         *
-         * This call is SYNCHRONOUS from main's perspective:
-         *  - It blocks until the scan completes
-         *  - Internally it uses async I/O (async_connect + steady_timer)
-         *  - When run() returns, all async operations have finished
-         *
-         * Expected behavior:
-         *  - Multiple async_connects initiated (up to max_concurrency)
-         *  - Multiple steady_timers initiated
-         *  - They race; winners cancel losers
-         *  - PortResults are populated
-         *  - ScanSummary is returned
-         */
+        // Run the scan (blocks until complete)
         ScanSummary summary = scanner.run();
 
         // Print formatted results
         print_results(summary);
 
-        // Verify Phase 4 constraints
-        if (summary.total_hosts() != 1) {
-            std::cerr << "ERROR: Expected exactly 1 host, got "
-                      << summary.total_hosts() << "\n";
+        // Verify Phase 5 constraints
+        if (summary.total_hosts() != config.targets.size()) {
+            std::cerr << "ERROR: Expected " << config.targets.size()
+                      << " hosts, got " << summary.total_hosts() << "\n";
             return 1;
         }
 
-        if (summary.total_ports() != config.ports.size()) {
-            std::cerr << "ERROR: Expected " << config.ports.size()
-                      << " ports, got " << summary.total_ports() << "\n";
+        const std::size_t expected_total_ports =
+            config.targets.size() * config.ports.size();
+
+        if (summary.total_ports() != expected_total_ports) {
+            std::cerr << "ERROR: Expected " << expected_total_ports
+                      << " total ports, got " << summary.total_ports() << "\n";
             return 1;
         }
 
-        std::cout << "✓ Phase 4 test completed successfully.\n";
-        std::cout << "✓ Scanned " << summary.total_ports() << " ports.\n";
-        std::cout << "✓ Open: " << summary.total_open_ports() << "\n";
+        // Verify each host has correct number of ports
+        for (const auto& host : summary.hosts) {
+            if (host.total_ports() != config.ports.size()) {
+                std::cerr << "ERROR: Host " << host.host
+                          << " has " << host.total_ports()
+                          << " ports, expected " << config.ports.size() << "\n";
+                return 1;
+            }
+        }
+
+        std::cout << "✓ Phase 5 test completed successfully.\n";
+        std::cout << "✓ Scanned " << summary.total_hosts() << " hosts.\n";
+        std::cout << "✓ Total ports: " << summary.total_ports() << "\n";
+        std::cout << "✓ Total open: " << summary.total_open_ports() << "\n";
         std::cout << "✓ Duration: " << summary.duration().count() << " ms\n\n";
 
         return 0;
