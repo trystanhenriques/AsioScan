@@ -31,23 +31,6 @@ enum class IpVersion {
     IPv6
 };
 
-/*
- * Output format for scan results.
- */
-enum class OutputFormat {
-    Text,
-    Xml
-};
-
-/*
- * Terminal color behavior.
- * Auto enables color only when stdout is a TTY.
- */
-enum class ColorMode {
-    Auto,
-    Always,
-    Never
-};
 
 /*
  * ScanConfig
@@ -102,29 +85,7 @@ struct ScanConfig {
     // Preferred IP version (IPv4 / IPv6 / Auto).
     IpVersion ip_version{IpVersion::Auto};
 
-    /* ------------------------------------------------------------
-     * Output behavior
-     * ------------------------------------------------------------ */
-
-    // Output format for results.
-    OutputFormat output_format{OutputFormat::Text};
-
-    // Optional output file path.
-    // If empty, results are written to stdout.
-    std::optional<std::string> output_file{};
-
-    // Enable verbose progress output (stderr).
-    bool verbose{false};
-
-    // Quiet mode: suppress headers and summaries.
-    bool quiet{false};
-
-    // Include connection reason in output (e.g., timeout, refused).
-    bool show_reason{false};
-
-    // Terminal color behavior.
-    ColorMode color_mode{ColorMode::Auto};
-
+ 
     /* ------------------------------------------------------------
      * Metadata
      * ------------------------------------------------------------ */
@@ -149,15 +110,6 @@ struct ScanConfig {
         return targets.size() > 1;
     }
 
-    // Returns true if output is directed to a file.
-    bool has_output_file() const noexcept {
-        return output_file.has_value();
-    }
-
-    // Returns true if quiet mode is enabled.
-    bool is_quiet_mode() const noexcept {
-        return quiet;
-    }
 };
 
 } // namespace asioscan
