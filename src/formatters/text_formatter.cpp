@@ -121,6 +121,20 @@ void print_summary(const ScanSummary& summary) {
     std::cout << "Total duration: " << format_duration(summary.duration()) << "\n";
 }
 
+/*
+ * Print quiet mode output.
+ * Outputs only open ports in minimal format.
+ */
+void print_quiet(const ScanSummary& summary) {
+    for (const auto& host : summary.hosts) {
+        for (const auto& port : host.ports) {
+            if (port.state == PortState::Open) {
+                std::cout << host.host << ":" << port.port << " open\n";
+            }
+        }
+    }
+}
+
 } // anonymous namespace
 
 /*
@@ -132,6 +146,11 @@ void print_summary(const ScanSummary& summary) {
  * a header, per-host sections, and a summary footer.
  */
 void TextFormatter::print(const ScanSummary& summary, const OutputOptions& options) {
+    if (options.text_mode == TextMode::Quiet) {
+        print_quiet(summary);
+        return;
+    }
+    
     print_header(summary);
     
     for (const auto& host : summary.hosts) {
