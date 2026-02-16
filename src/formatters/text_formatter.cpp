@@ -135,6 +135,19 @@ void print_quiet(const ScanSummary& summary) {
     }
 }
 
+/*
+ * Print summary-only mode output.
+ * Outputs high-level scan statistics without per-host or per-port details.
+ * A host is considered "up" if it has at least one open port.
+ */
+void print_summary_only(const ScanSummary& summary) {
+    std::cout << "Hosts scanned: " << summary.total_hosts() << "\n";
+    std::cout << "Hosts up: " << summary.hosts_up() << "\n";
+    std::cout << "Ports scanned: " << summary.total_ports() << "\n";
+    std::cout << "Open ports: " << summary.total_open_ports() << "\n";
+    std::cout << "Scan duration: " << format_duration(summary.duration()) << "\n";
+}
+
 } // anonymous namespace
 
 /*
@@ -148,6 +161,11 @@ void print_quiet(const ScanSummary& summary) {
 void TextFormatter::print(const ScanSummary& summary, const OutputOptions& options) {
     if (options.text_mode == TextMode::Quiet) {
         print_quiet(summary);
+        return;
+    }
+    
+    if (options.text_mode == TextMode::Summary) {
+        print_summary_only(summary);
         return;
     }
     
