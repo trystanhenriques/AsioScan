@@ -21,8 +21,9 @@
 
 namespace asioscan {
 
-// Forward declaration to avoid coupling
+// Forward declarations to avoid coupling
 struct ScanSummary;
+struct OutputOptions;
 
 /*
  * Formatter
@@ -39,12 +40,13 @@ public:
     /*
      * Render a completed scan summary to output.
      *
-     * Implementations determine destination, format, and style.
-     * This method may write to stdout, a file, or any other sink.
+     * Implementations determine destination, format, and style based on
+     * the provided options. This method may write to stdout, a file, or
+     * any other sink.
      *
-     * The summary is passed by const reference and must not be modified.
+     * Both parameters are passed by const reference and must not be modified.
      */
-    virtual void print(const ScanSummary& summary) = 0;
+    virtual void print(const ScanSummary& summary, const OutputOptions& options) = 0;
 };
 
 } // namespace asioscan

@@ -1,211 +1,232 @@
-#include "scanner/scanner.hpp"
-#include "config/scan_config.hpp"
+#include "formatters/text_formatter.hpp"
+#include "formatters/OutputOptions.hpp"
 #include "result/scan_summary.hpp"
 #include "result/host_result.hpp"
 #include "result/port_result.hpp"
 
+#include <chrono>
 #include <iostream>
 #include <string>
-#include <thread>
-#include <chrono>
 
 /*
- * Phase 6 Test Harness
- * --------------------
- * This program validates graceful cancellation support.
+ * Comprehensive test for TextFormatter modes.
  *
- * Phase 6 goals:
- *  - Prove cancellation stops new work
- *  - Verify in-flight operations are cancelled safely
- *  - Confirm partial results are preserved
- *  - Validate no crashes or undefined behavior
- *
- * Test scenarios:
- *  1. Normal scan (no cancellation)
- *  2. Early cancellation (during first few tasks)
- *  3. Mid-scan cancellation
+ * This test manually constructs a ScanSummary with realistic data
+ * to demonstrate all implemented text output formats.
  */
 
 using namespace asioscan;
 
-/*
- * Helper: Convert PortState enum to human-readable string
- */
-const char* port_state_to_string(PortState state) {
-    switch (state) {
-        case PortState::Open:     return "Open";
-        case PortState::Closed:   return "Closed";
-        case PortState::Filtered: return "Filtered";
-        case PortState::Error:    return "Error";
-        default:                  return "Unknown";
-    }
-}
-
-/*
- * Helper: Print scan results in a readable format
- */
-void print_results(const ScanSummary& summary) {
-    std::cout << "\n========================================\n";
-    std::cout << "Phase 6 Scan Results\n";
-    std::cout << "========================================\n\n";
-
-    std::cout << "Total scan duration: "
-              << summary.duration().count()
-              << " ms\n";
-    std::cout << "Hosts scanned: " << summary.total_hosts() << "\n";
-    std::cout << "Total ports scanned: " << summary.total_ports() << "\n\n";
-
-    for (const auto& host : summary.hosts) {
-        std::cout << "Host: " << host.host << "\n";
-        std::cout << "  Duration: " << host.duration().count() << " ms\n";
-        std::cout << "  Ports completed: " << host.total_ports() << "\n";
-        std::cout << "  Open: " << host.open_ports()
-                  << ", Closed: " << host.closed_ports()
-                  << ", Filtered: " << host.filtered_ports()
-                  << ", Error: " << host.error_ports() << "\n\n";
-    }
-
-    std::cout << "========================================\n\n";
-}
-
-/*
- * Test 1: Normal scan (no cancellation)
- */
-void test_normal_scan() {
-    std::cout << "========================================\n";
-    std::cout << "Test 1: Normal Scan (No Cancellation)\n";
-    std::cout << "========================================\n\n";
-
-    ScanConfig config;
-    config.targets = {"localhost"};
-    config.ports = {22, 80, 443};
-    config.timeout = std::chrono::milliseconds(500);
-    config.max_concurrency = 5;
-    config.verbose = true;
-
-    ScannerCallbacks callbacks;
-    callbacks.on_port_result = [](const std::string& host, const PortResult& result) {
-        std::cout << "[Port] " << host << ":" << result.port
-                  << " → " << port_state_to_string(result.state) << "\n";
-    };
-
-    Scanner scanner(config, callbacks);
-    ScanSummary summary = scanner.run();
-
-    print_results(summary);
-
-    // Validate: all ports should be scanned
-    if (summary.total_ports() != config.ports.size()) {
-        std::cerr << "[X] Test 1 FAILED: Expected " << config.ports.size()
-                  << " ports, got " << summary.total_ports() << "\n";
-    } else {
-        std::cout << "[+] Test 1 PASSED\n\n";
-    }
-}
-
-/*
- * Test 2: Early cancellation
- */
-void test_early_cancellation() {
-    std::cout << "========================================\n";
-    std::cout << "Test 2: Early Cancellation\n";
-    std::cout << "========================================\n\n";
-
-    ScanConfig config;
-    config.targets = {"localhost", "127.0.0.1"};
-    config.ports = {20, 21, 22, 23, 25, 80, 110, 143, 443, 3306, 5432, 8080};
-    config.timeout = std::chrono::milliseconds(2000);
-    config.max_concurrency = 3;
-    config.verbose = true;
-
-    std::size_t ports_completed = 0;
-
-    ScannerCallbacks callbacks;
-    callbacks.on_port_result = [&ports_completed](const std::string& host, const PortResult& result) {
-        ++ports_completed;
-        std::cout << "[Port " << ports_completed << "] "
-                  << host << ":" << result.port
-                  << " → " << port_state_to_string(result.state) << "\n";
-    };
-
-    Scanner scanner(config, callbacks);
-
-    // Cancel after 100ms
-    std::thread canceller([&scanner]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        std::cout << "\n[Cancellation requested]\n\n";
-        scanner.cancel();
-    });
-
-    ScanSummary summary = scanner.run();
-    canceller.join();
-
-    print_results(summary);
-
-    // Validate: should have partial results
-    const std::size_t expected_total = config.targets.size() * config.ports.size();
-    if (summary.total_ports() < expected_total) {
-        std::cout << "[+] Test 2 PASSED: Partial results preserved ("
-                  << summary.total_ports() << "/" << expected_total << " ports)\n\n";
-    } else {
-        std::cerr << "[!] Test 2 WARNING: All ports completed despite cancellation\n\n";
-    }
-}
-
-/*
- * Test 3: Mid-scan cancellation
- */
-void test_mid_scan_cancellation() {
-    std::cout << "========================================\n";
-    std::cout << "Test 3: Mid-Scan Cancellation\n";
-    std::cout << "========================================\n\n";
-
-    ScanConfig config;
-    config.targets = {"google.com", "github.com"};
-    config.ports = {80, 443, 8080, 8443};
-    config.timeout = std::chrono::milliseconds(3000);
-    config.max_concurrency = 2;
-    config.verbose = true;
-
-    std::size_t ports_completed = 0;
-
-    ScannerCallbacks callbacks;
-    callbacks.on_port_result = [&ports_completed](const std::string& host, const PortResult& result) {
-        ++ports_completed;
-        std::cout << "[Port " << ports_completed << "] "
-                  << host << ":" << result.port
-                  << " → " << port_state_to_string(result.state) << "\n";
-    };
-
-    Scanner scanner(config, callbacks);
-
-    // Cancel after 1 second
-    std::thread canceller([&scanner]() {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        std::cout << "\n[Cancellation requested]\n\n";
-        scanner.cancel();
-    });
-
-    ScanSummary summary = scanner.run();
-    canceller.join();
-
-    print_results(summary);
-
-    std::cout << "[+] Test 3 PASSED: Cancellation completed gracefully\n\n";
-}
-
 int main() {
     try {
-        test_normal_scan();
-        test_early_cancellation();
-        test_mid_scan_cancellation();
-
-        std::cout << "========================================\n";
-        std::cout << "[+] All Phase 6 tests completed\n";
-        std::cout << "========================================\n\n";
-
+        // Create scan summary with multiple hosts
+        ScanSummary summary;
+        
+        const auto scan_start = std::chrono::steady_clock::now();
+        summary.start_time = scan_start;
+        
+        // First host: scanme.nmap.org (multiple open ports)
+        HostResult host1;
+        host1.host = "scanme.nmap.org";
+        host1.start_time = scan_start;
+        
+        PortResult h1_port1;
+        h1_port1.port = 22;
+        h1_port1.state = PortState::Open;
+        h1_port1.latency = std::chrono::milliseconds(42);
+        h1_port1.reason = "Connection established";
+        host1.ports.push_back(h1_port1);
+        
+        PortResult h1_port2;
+        h1_port2.port = 80;
+        h1_port2.state = PortState::Closed;
+        h1_port2.latency = std::chrono::milliseconds(15);
+        h1_port2.reason = "Connection refused";
+        host1.ports.push_back(h1_port2);
+        
+        PortResult h1_port3;
+        h1_port3.port = 443;
+        h1_port3.state = PortState::Open;
+        h1_port3.latency = std::chrono::milliseconds(38);
+        h1_port3.reason = "Connection established";
+        host1.ports.push_back(h1_port3);
+        
+        PortResult h1_port4;
+        h1_port4.port = 8080;
+        h1_port4.state = PortState::Filtered;
+        h1_port4.latency = std::chrono::milliseconds(500);
+        h1_port4.reason = "Timeout";
+        host1.ports.push_back(h1_port4);
+        
+        host1.end_time = scan_start + std::chrono::milliseconds(550);
+        summary.hosts.push_back(host1);
+        
+        // Second host: example.com (one open port)
+        HostResult host2;
+        host2.host = "example.com";
+        host2.start_time = scan_start + std::chrono::milliseconds(600);
+        
+        PortResult h2_port1;
+        h2_port1.port = 80;
+        h2_port1.state = PortState::Open;
+        h2_port1.latency = std::chrono::milliseconds(25);
+        h2_port1.reason = "Connection established";
+        host2.ports.push_back(h2_port1);
+        
+        PortResult h2_port2;
+        h2_port2.port = 443;
+        h2_port2.state = PortState::Closed;
+        h2_port2.latency = std::chrono::milliseconds(30);
+        h2_port2.reason = "Connection refused";
+        host2.ports.push_back(h2_port2);
+        
+        PortResult h2_port3;
+        h2_port3.port = 22;
+        h2_port3.state = PortState::Filtered;
+        h2_port3.latency = std::chrono::milliseconds(500);
+        h2_port3.reason = "Timeout";
+        host2.ports.push_back(h2_port3);
+        
+        PortResult h2_port4;
+        h2_port4.port = 3306;
+        h2_port4.state = PortState::Closed;
+        h2_port4.latency = std::chrono::milliseconds(10);
+        h2_port4.reason = "Connection refused";
+        host2.ports.push_back(h2_port4);
+        
+        PortResult h2_port5;
+        h2_port5.port = 5432;
+        h2_port5.state = PortState::Error;
+        h2_port5.latency = std::chrono::milliseconds(0);
+        h2_port5.reason = "Network unreachable";
+        host2.ports.push_back(h2_port5);
+        
+        host2.end_time = scan_start + std::chrono::milliseconds(1100);
+        summary.hosts.push_back(host2);
+        
+        // Third host: 192.168.1.1 (no open ports)
+        HostResult host3;
+        host3.host = "192.168.1.1";
+        host3.start_time = scan_start + std::chrono::milliseconds(1200);
+        
+        PortResult h3_port1;
+        h3_port1.port = 22;
+        h3_port1.state = PortState::Closed;
+        h3_port1.latency = std::chrono::milliseconds(12);
+        h3_port1.reason = "Connection refused";
+        host3.ports.push_back(h3_port1);
+        
+        PortResult h3_port2;
+        h3_port2.port = 80;
+        h3_port2.state = PortState::Filtered;
+        h3_port2.latency = std::chrono::milliseconds(500);
+        h3_port2.reason = "Timeout";
+        host3.ports.push_back(h3_port2);
+        
+        PortResult h3_port3;
+        h3_port3.port = 443;
+        h3_port3.state = PortState::Closed;
+        h3_port3.latency = std::chrono::milliseconds(14);
+        h3_port3.reason = "Connection refused";
+        host3.ports.push_back(h3_port3);
+        
+        host3.end_time = scan_start + std::chrono::milliseconds(1700);
+        summary.hosts.push_back(host3);
+        
+        // Fourth host: offline.local (completely down - no ports scanned)
+        HostResult host4;
+        host4.host = "offline.local";
+        host4.start_time = scan_start + std::chrono::milliseconds(1800);
+        host4.end_time = scan_start + std::chrono::milliseconds(1800);
+        summary.hosts.push_back(host4);
+        
+        summary.end_time = scan_start + std::chrono::milliseconds(1800);
+        
+        // Test 1: Normal output without reasons
+        std::cout << "=== Test 1: Normal Output (no reasons) ===\n\n";
+        
+        OutputOptions options1;
+        options1.format = OutputFormat::Text;
+        options1.text_mode = TextMode::Normal;
+        options1.show_reason = false;
+        
+        TextFormatter formatter;
+        formatter.print(summary, options1);
+        
+        std::cout << "\n\n";
+        
+        // Test 2: Normal output with reasons
+        std::cout << "=== Test 2: Normal Output (with reasons) ===\n\n";
+        
+        OutputOptions options2;
+        options2.format = OutputFormat::Text;
+        options2.text_mode = TextMode::Normal;
+        options2.show_reason = true;
+        
+        formatter.print(summary, options2);
+        
+        std::cout << "\n\n";
+        
+        // Test 3: Quiet mode
+        std::cout << "=== Test 3: Quiet Mode ===\n\n";
+        
+        OutputOptions options3;
+        options3.format = OutputFormat::Text;
+        options3.text_mode = TextMode::Quiet;
+        options3.show_reason = false;
+        
+        formatter.print(summary, options3);
+        
+        std::cout << "\n\n";
+        
+        // Test 4: Summary-only mode
+        std::cout << "=== Test 4: Summary-Only Mode ===\n\n";
+        
+        OutputOptions options4;
+        options4.format = OutputFormat::Text;
+        options4.text_mode = TextMode::Summary;
+        options4.show_reason = false;
+        
+        formatter.print(summary, options4);
+        
+        std::cout << "\n\n";
+        
+        // Test 5: Ports-only mode
+        std::cout << "=== Test 5: Ports-Only Mode ===\n\n";
+        
+        OutputOptions options5;
+        options5.format = OutputFormat::Text;
+        options5.text_mode = TextMode::PortsOnly;
+        options5.show_reason = false;
+        
+        formatter.print(summary, options5);
+        
+        std::cout << "\n\n";
+        
+        // Test 6: Hosts-only mode
+        std::cout << "=== Test 6: Hosts-Only Mode ===\n\n";
+        
+        OutputOptions options6;
+        options6.format = OutputFormat::Text;
+        options6.text_mode = TextMode::HostsOnly;
+        options6.show_reason = false;
+        
+        formatter.print(summary, options6);
+        
+        std::cout << "\n\n";
+        
+        // Test 7: Verbose mode
+        std::cout << "=== Test 7: Verbose Mode ===\n\n";
+        
+        OutputOptions options7;
+        options7.format = OutputFormat::Text;
+        options7.text_mode = TextMode::Verbose;
+        options7.show_reason = false;
+        
+        formatter.print(summary, options7);
+        
         return 0;
-
+        
     } catch (const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << "\n";
         return 1;

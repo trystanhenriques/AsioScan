@@ -42,6 +42,13 @@ add_executable(asioscan
         src/result/port_result.hpp
         src/result/host_result.hpp
         src/result/scan_summary.hpp
+        #
+        # Formatting
+        src/formatters/formatter.hpp
+        src/formatters/OutputOptions.hpp
+        src/formatters/text_formatter.cpp
+        src/formatters/text_formatter.hpp
+
 )
 
 # ------------------------------------------------------------
