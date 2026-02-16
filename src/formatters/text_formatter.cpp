@@ -29,6 +29,19 @@ const char* port_state_to_string(PortState state) {
 }
 
 /*
+ * Convert PortState to lowercase string.
+ */
+const char* port_state_to_lowercase(PortState state) {
+    switch (state) {
+        case PortState::Open:     return "open";
+        case PortState::Closed:   return "closed";
+        case PortState::Filtered: return "filtered";
+        case PortState::Error:    return "error";
+        default:                  return "unknown";
+    }
+}
+
+/*
  * Format duration in milliseconds to human-readable string.
  */
 std::string format_duration(std::chrono::milliseconds ms) {
@@ -148,6 +161,27 @@ void print_summary_only(const ScanSummary& summary) {
     std::cout << "Scan duration: " << format_duration(summary.duration()) << "\n";
 }
 
+/*
+ * Print ports-only mode output.
+ * Outputs port results with minimal framing per host.
+ */
+void print_ports_only(const ScanSummary& summary) {
+    for (std::size_t i = 0; i < summary.hosts.size(); ++i) {
+        const auto& host = summary.hosts[i];
+        
+        std::cout << "Host: " << host.host << "\n";
+        
+        for (const auto& port : host.ports) {
+            std::cout << port.port << "/tcp " 
+                      << port_state_to_lowercase(port.state) << "\n";
+        }
+        
+        if (i < summary.hosts.size() - 1) {
+            std::cout << "\n";
+        }
+    }
+}
+
 } // anonymous namespace
 
 /*
@@ -166,6 +200,11 @@ void TextFormatter::print(const ScanSummary& summary, const OutputOptions& optio
     
     if (options.text_mode == TextMode::Summary) {
         print_summary_only(summary);
+        return;
+    }
+    
+    if (options.text_mode == TextMode::PortsOnly) {
+        print_ports_only(summary);
         return;
     }
     

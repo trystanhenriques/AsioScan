@@ -9,7 +9,7 @@
 #include <string>
 
 /*
- * Comprehensive test for TextFormatter Normal, Quiet, and Summary modes.
+ * Comprehensive test for TextFormatter modes.
  *
  * This test manually constructs a ScanSummary with realistic data
  * to demonstrate all implemented text output formats.
@@ -174,6 +174,18 @@ int main() {
         options4.show_reason = false;
         
         formatter.print(summary, options4);
+        
+        std::cout << "\n\n";
+        
+        // Test 5: Ports-only mode
+        std::cout << "=== Test 5: Ports-Only Mode ===\n\n";
+        
+        OutputOptions options5;
+        options5.format = OutputFormat::Text;
+        options5.text_mode = TextMode::PortsOnly;
+        options5.show_reason = false;
+        
+        formatter.print(summary, options5);
         
         return 0;
         
