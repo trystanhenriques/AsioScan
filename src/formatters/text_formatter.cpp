@@ -182,6 +182,23 @@ void print_ports_only(const ScanSummary& summary) {
     }
 }
 
+/*
+ * Print hosts-only mode output.
+ * Outputs one line per host with availability status and open port count.
+ * Host is "up" if it has at least one port result, "down" otherwise.
+ */
+void print_hosts_only(const ScanSummary& summary) {
+    for (const auto& host : summary.hosts) {
+        const std::size_t open_count = host.open_ports();
+        const bool is_up = host.total_ports() > 0;
+        
+        std::cout << host.host << ": " 
+                  << (is_up ? "up" : "down") 
+                  << " (" << open_count << " open port" 
+                  << (open_count == 1 ? "" : "s") << ")\n";
+    }
+}
+
 } // anonymous namespace
 
 /*
@@ -205,6 +222,11 @@ void TextFormatter::print(const ScanSummary& summary, const OutputOptions& optio
     
     if (options.text_mode == TextMode::PortsOnly) {
         print_ports_only(summary);
+        return;
+    }
+    
+    if (options.text_mode == TextMode::HostsOnly) {
+        print_hosts_only(summary);
         return;
     }
     

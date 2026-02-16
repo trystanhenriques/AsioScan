@@ -25,7 +25,7 @@ int main() {
         const auto scan_start = std::chrono::steady_clock::now();
         summary.start_time = scan_start;
         
-        // First host: scanme.nmap.org (mix of open and closed ports)
+        // First host: scanme.nmap.org (multiple open ports)
         HostResult host1;
         host1.host = "scanme.nmap.org";
         host1.start_time = scan_start;
@@ -61,7 +61,7 @@ int main() {
         host1.end_time = scan_start + std::chrono::milliseconds(550);
         summary.hosts.push_back(host1);
         
-        // Second host: example.com (has open ports)
+        // Second host: example.com (one open port)
         HostResult host2;
         host2.host = "example.com";
         host2.start_time = scan_start + std::chrono::milliseconds(600);
@@ -75,9 +75,9 @@ int main() {
         
         PortResult h2_port2;
         h2_port2.port = 443;
-        h2_port2.state = PortState::Open;
+        h2_port2.state = PortState::Closed;
         h2_port2.latency = std::chrono::milliseconds(30);
-        h2_port2.reason = "Connection established";
+        h2_port2.reason = "Connection refused";
         host2.ports.push_back(h2_port2);
         
         PortResult h2_port3;
@@ -97,7 +97,7 @@ int main() {
         host2.end_time = scan_start + std::chrono::milliseconds(1100);
         summary.hosts.push_back(host2);
         
-        // Third host: 192.168.1.1 (no open ports - all closed/filtered)
+        // Third host: 192.168.1.1 (no open ports)
         HostResult host3;
         host3.host = "192.168.1.1";
         host3.start_time = scan_start + std::chrono::milliseconds(1200);
@@ -126,7 +126,14 @@ int main() {
         host3.end_time = scan_start + std::chrono::milliseconds(1700);
         summary.hosts.push_back(host3);
         
-        summary.end_time = scan_start + std::chrono::milliseconds(1700);
+        // Fourth host: offline.local (completely down - no ports scanned)
+        HostResult host4;
+        host4.host = "offline.local";
+        host4.start_time = scan_start + std::chrono::milliseconds(1800);
+        host4.end_time = scan_start + std::chrono::milliseconds(1800);
+        summary.hosts.push_back(host4);
+        
+        summary.end_time = scan_start + std::chrono::milliseconds(1800);
         
         // Test 1: Normal output without reasons
         std::cout << "=== Test 1: Normal Output (no reasons) ===\n\n";
@@ -186,6 +193,18 @@ int main() {
         options5.show_reason = false;
         
         formatter.print(summary, options5);
+        
+        std::cout << "\n\n";
+        
+        // Test 6: Hosts-only mode
+        std::cout << "=== Test 6: Hosts-Only Mode ===\n\n";
+        
+        OutputOptions options6;
+        options6.format = OutputFormat::Text;
+        options6.text_mode = TextMode::HostsOnly;
+        options6.show_reason = false;
+        
+        formatter.print(summary, options6);
         
         return 0;
         
