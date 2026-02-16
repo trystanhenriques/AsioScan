@@ -90,31 +90,46 @@ void print_header(const ScanSummary& summary) {
 /*
  * Print per-host section with port table.
  */
-void print_host(const HostResult& host, bool show_reason) {
+void print_host(const HostResult& host, bool show_reason, bool verbose) {
     std::cout << "----------------------------------------\n";
     std::cout << "Host: " << host.host << "\n";
     std::cout << "Host scan duration: " << host.duration().count() << " ms\n\n";
     
-    if (show_reason) {
+    if (verbose) {
+        std::cout << std::left
+                  << std::setw(8) << "PORT"
+                  << " " << std::setw(12) << "STATE"
+                  << " " << std::setw(15) << "LATENCY(ms)"
+                  << " REASON\n";
+        
+        for (const auto& port : host.ports) {
+            std::cout << std::left << std::setw(8) << port.port
+                      << " " << std::setw(12) << port_state_to_string(port.state)
+                      << " " << std::setw(15) << port.latency.count()
+                      << " " << port.reason << "\n";
+            std::cout << "    Attempts: 1\n";
+        }
+    } else if (show_reason) {
         std::cout << std::left
                   << std::setw(8) << "PORT"
                   << " " << std::setw(12) << "STATE"
                   << " REASON\n";
+        
+        for (const auto& port : host.ports) {
+            std::cout << std::left << std::setw(8) << port.port
+                      << " " << std::setw(12) << port_state_to_string(port.state)
+                      << " " << port.reason << "\n";
+        }
     } else {
         std::cout << std::left
                   << std::setw(8) << "PORT"
                   << " STATE\n";
-    }
-    
-    for (const auto& port : host.ports) {
-        std::cout << std::left << std::setw(8) << port.port
-                  << " " << std::setw(12) << port_state_to_string(port.state);
         
-        if (show_reason) {
-            std::cout << " " << port.reason;
+        for (const auto& port : host.ports) {
+            std::cout << std::left << std::setw(8) << port.port
+                      << " " << std::setw(12) << port_state_to_string(port.state)
+                      << "\n";
         }
-        
-        std::cout << "\n";
     }
     
     std::cout << "\n";
@@ -230,10 +245,12 @@ void TextFormatter::print(const ScanSummary& summary, const OutputOptions& optio
         return;
     }
     
+    const bool verbose = (options.text_mode == TextMode::Verbose);
+    
     print_header(summary);
     
     for (const auto& host : summary.hosts) {
-        print_host(host, options.show_reason);
+        print_host(host, options.show_reason, verbose);
     }
     
     print_summary(summary);

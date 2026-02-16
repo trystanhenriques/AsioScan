@@ -94,6 +94,13 @@ int main() {
         h2_port4.reason = "Connection refused";
         host2.ports.push_back(h2_port4);
         
+        PortResult h2_port5;
+        h2_port5.port = 5432;
+        h2_port5.state = PortState::Error;
+        h2_port5.latency = std::chrono::milliseconds(0);
+        h2_port5.reason = "Network unreachable";
+        host2.ports.push_back(h2_port5);
+        
         host2.end_time = scan_start + std::chrono::milliseconds(1100);
         summary.hosts.push_back(host2);
         
@@ -205,6 +212,18 @@ int main() {
         options6.show_reason = false;
         
         formatter.print(summary, options6);
+        
+        std::cout << "\n\n";
+        
+        // Test 7: Verbose mode
+        std::cout << "=== Test 7: Verbose Mode ===\n\n";
+        
+        OutputOptions options7;
+        options7.format = OutputFormat::Text;
+        options7.text_mode = TextMode::Verbose;
+        options7.show_reason = false;
+        
+        formatter.print(summary, options7);
         
         return 0;
         
