@@ -1,7 +1,6 @@
 #include "cli/cli_parser.hpp"
 
 #include <iostream>
-#include <string>
 
 /*
  * Temporary main for validating CLI parser wiring.
@@ -15,15 +14,22 @@ int main(int argc, char** argv) {
         return result.exit_code;
     }
 
-    if (result.options.targets.empty()) {
-        std::cerr << "No targets specified. Use --help for usage.\n";
-        return 1;
+    const auto& config = result.config;
+
+    std::cout << "Targets (" << config.targets.size() << "):\n";
+    for (const auto& t : config.targets) {
+        std::cout << "  " << t << "\n";
     }
 
-    std::cout << "Parsed " << result.options.targets.size() << " target(s):\n";
-    for (const auto& target : result.options.targets) {
-        std::cout << "  " << target << "\n";
+    std::cout << "Ports (" << config.ports.size() << "): ";
+    for (std::size_t i = 0; i < config.ports.size(); ++i) {
+        if (i > 0) std::cout << ", ";
+        std::cout << config.ports[i];
     }
+    std::cout << "\n";
+
+    std::cout << "Timeout: " << config.timeout.count() << " ms\n";
+    std::cout << "Concurrency: " << config.max_concurrency << "\n";
 
     return 0;
 }
