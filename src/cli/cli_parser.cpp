@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cstdint>
+#include <iostream>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -94,7 +95,7 @@ ParseResult parse_cli(int argc, char** argv) {
 
     CLI::App app{"AsioScan - Cross-platform TCP port scanner"};
 
-    // Raw CLI values before mapping into ScanConfig
+    // --- Scan config raw values ---
     std::string port_spec;
     std::uint64_t timeout_ms = result.config.timeout.count();
     std::size_t concurrency = result.config.max_concurrency;
@@ -115,6 +116,40 @@ ParseResult parse_cli(int argc, char** argv) {
                    "Max concurrent connections (default: 200)")
         ->check(CLI::Range(static_cast<std::size_t>(1), static_cast<std::size_t>(10000)));
 
+    // --- Output mode flags (mutually exclusive) ---
+    bool quiet = false;
+    bool summary = false;
+    bool ports_only = false;
+    bool hosts_only = false;
+    bool verbose = false;
+
+    auto* flag_quiet = app.add_flag("-q,--quiet", quiet,
+                                    "Show only open ports (minimal output)");
+    auto* flag_summary = app.add_flag("--summary", summary,
+                                      "Show scan summary statistics only");
+    auto* flag_ports = app.add_flag("--ports-only", ports_only,
+                                    "Show per-host port results only");
+    auto* flag_hosts = app.add_flag("--hosts-only", hosts_only,
+                                    "Show host availability only");
+    auto* flag_verbose = app.add_flag("-v,--verbose", verbose,
+                                      "Show extended detail per port");
+
+    // Enforce mutual exclusion
+    flag_quiet->excludes(flag_summary, flag_ports, flag_hosts, flag_verbose);
+    flag_summary->excludes(flag_quiet, flag_ports, flag_hosts, flag_verbose);
+    flag_ports->excludes(flag_quiet, flag_summary, flag_hosts, flag_verbose);
+    flag_hosts->excludes(flag_quiet, flag_summary, flag_ports, flag_verbose);
+    flag_verbose->excludes(flag_quiet, flag_summary, flag_ports, flag_hosts);
+
+    // --- Additive output flags ---
+    app.add_flag("-r,--reason", result.output.show_reason,
+                 "Include connection reason in output");
+
+    // --- Output destination ---
+    app.add_option("-o,--output", result.output.output_file,
+                   "Write output to file instead of stdout");
+
+    // --- Parse ---
     try {
         app.parse(argc, argv);
     } catch (const CLI::ParseError& e) {
@@ -143,9 +178,16 @@ ParseResult parse_cli(int argc, char** argv) {
         return result;
     }
 
-    // Map remaining values
+    // Map scan config values
     result.config.timeout = std::chrono::milliseconds(timeout_ms);
     result.config.max_concurrency = concurrency;
+
+    // Map output mode
+    if (quiet)           result.output.text_mode = TextMode::Quiet;
+    else if (summary)    result.output.text_mode = TextMode::Summary;
+    else if (ports_only) result.output.text_mode = TextMode::PortsOnly;
+    else if (hosts_only) result.output.text_mode = TextMode::HostsOnly;
+    else if (verbose)    result.output.text_mode = TextMode::Verbose;
 
     result.status = ParseStatus::Ok;
     return result;
