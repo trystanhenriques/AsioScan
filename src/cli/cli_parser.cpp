@@ -62,9 +62,9 @@ std::vector<std::uint16_t> parse_ports(const std::string& spec) {
             throw std::invalid_argument("Empty port token in: '" + spec + "'");
         }
 
-        // Check for range separator
+        // Check for range separator (dash not at position 0)
         auto dash = token.find('-');
-        if (dash != std::string_view::npos) {
+        if (dash != std::string_view::npos && dash != 0) {
             auto start = parse_single_port(token.substr(0, dash));
             auto end = parse_single_port(token.substr(dash + 1));
 
