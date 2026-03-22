@@ -61,6 +61,10 @@ add_executable(asioscan
         src/formatters/OutputOptions.hpp
         src/formatters/text_formatter.cpp
         src/formatters/text_formatter.hpp
+        #
+        # CLI parsing
+        src/cli/cli_parser.cpp
+        src/cli/cli_parser.hpp
 
 )
 
