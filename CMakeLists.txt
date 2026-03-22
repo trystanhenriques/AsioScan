@@ -26,6 +26,19 @@ else()
 endif()
 
 # ------------------------------------------------------------
+# CLI11 (command-line parsing, header-only)
+# ------------------------------------------------------------
+include(FetchContent)
+
+FetchContent_Declare(
+    CLI11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG        v2.4.2
+)
+
+FetchContent_MakeAvailable(CLI11)
+
+# ------------------------------------------------------------
 # Main executable
 # ------------------------------------------------------------
 add_executable(asioscan
@@ -86,6 +99,11 @@ else()
         Boost::boost   # headers-only target (this exists on Homebrew)
     )
 endif()
+
+# ------------------------------------------------------------
+# CLI11 linkage (header-only)
+# ------------------------------------------------------------
+target_link_libraries(asioscan PRIVATE CLI11::CLI11)
 
 # ------------------------------------------------------------
 # Windows-specific networking requirement

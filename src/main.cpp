@@ -4,6 +4,7 @@
 #include "result/host_result.hpp"
 #include "result/port_result.hpp"
 
+#include <CLI/CLI.hpp>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -17,8 +18,22 @@
 
 using namespace asioscan;
 
-int main() {
+int main(int argc, char** argv) {
     try {
+        // Quick CLI11 smoke test
+        CLI::App app{"AsioScan - TCP port scanner"};
+        
+        std::string target = "localhost";
+        app.add_option("-t,--target", target, "Target host");
+        
+        try {
+            app.parse(argc, argv);
+        } catch (const CLI::ParseError& e) {
+            return app.exit(e);
+        }
+        
+        std::cout << "CLI11 OK - target: " << target << "\n\n";
+
         // Create scan summary with multiple hosts
         ScanSummary summary;
         
