@@ -14,6 +14,8 @@
 
 #include "formatters/formatter.hpp"
 
+#include <iosfwd>
+
 namespace asioscan {
 
 // Forward declarations
@@ -44,7 +46,9 @@ public:
      * Output destination, format mode, and styling are determined by
      * the provided options.
      */
-    void print(const ScanSummary& summary, const OutputOptions& options) override;
+    void print(std::ostream& out,
+               const ScanSummary& summary,
+               const OutputOptions& options) override;
 };
 
 } // namespace asioscan

@@ -45,6 +45,8 @@ add_library(asioscan_lib
         src/result/port_result.hpp
         src/result/host_result.hpp
         src/result/scan_summary.hpp
+        src/cli/cli_parser.hpp
+        src/cli/cli_parser.cpp
         src/scanner/scanner.hpp
         src/scanner/scanner.cpp
         src/formatters/OutputOptions.hpp
@@ -53,7 +55,7 @@ add_library(asioscan_lib
         src/formatters/text_formatter.cpp
 )
 
-# Public headers for app and future tests
+# Include directories for consumers of the core library
 target_include_directories(asioscan_lib
         PUBLIC
         src
