@@ -94,6 +94,14 @@ ParseResult parse_cli(int argc, char** argv) {
     ParseResult result;
 
     CLI::App app{"AsioScan - Cross-platform TCP port scanner"};
+    app.failure_message(CLI::FailureMessage::help);
+    app.footer(
+        "Examples:\n"
+        "  asioscan scanme.nmap.org\n"
+        "  asioscan -p 22,80,443 scanme.nmap.org\n"
+        "  asioscan --summary -p 1-100 example.com\n"
+        "  asioscan --ports-only -o results.txt 192.168.1.1"
+    );
 
     // --- Scan config raw values ---
     std::string port_spec;
