@@ -2,6 +2,7 @@
 #include "scanner/scanner.hpp"
 #include "formatters/text_formatter.hpp"
 
+#include <fstream>
 #include <iostream>
 
 int main(int argc, char** argv) {
@@ -16,7 +17,21 @@ int main(int argc, char** argv) {
         auto summary = scanner.run();
 
         asioscan::TextFormatter formatter;
-        formatter.print(summary, parsed.output);
+
+        std::ofstream output_file;
+        std::ostream* output_stream = &std::cout;
+
+        if (parsed.output.output_file.has_value()) {
+            output_file.open(*parsed.output.output_file, std::ios::out | std::ios::trunc);
+            if (!output_file.is_open()) {
+                std::cerr << "Error: failed to open output file: "
+                          << *parsed.output.output_file << "\n";
+                return 1;
+            }
+            output_stream = &output_file;
+        }
+
+        formatter.print(*output_stream, summary, parsed.output);
 
         return 0;
 

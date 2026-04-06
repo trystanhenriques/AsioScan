@@ -77,87 +77,87 @@ std::string format_timestamp(std::chrono::steady_clock::time_point tp) {
 /*
  * Print scan header section.
  */
-void print_header(const ScanSummary& summary) {
-    std::cout << "========================================\n";
-    std::cout << "AsioScan Scan Report\n";
-    std::cout << "========================================\n\n";
-    
-    std::cout << "Scan start time: " << format_timestamp(summary.start_time) << "\n";
-    std::cout << "Scan end time:   " << format_timestamp(summary.end_time) << "\n";
-    std::cout << "Scan duration:   " << format_duration(summary.duration()) << "\n\n";
+void print_header(std::ostream& out, const ScanSummary& summary) {
+    out << "========================================\n";
+    out << "AsioScan Scan Report\n";
+    out << "========================================\n\n";
+
+    out << "Scan start time: " << format_timestamp(summary.start_time) << "\n";
+    out << "Scan end time:   " << format_timestamp(summary.end_time) << "\n";
+    out << "Scan duration:   " << format_duration(summary.duration()) << "\n\n";
 }
 
 /*
  * Print per-host section with port table.
  */
-void print_host(const HostResult& host, bool show_reason, bool verbose) {
-    std::cout << "----------------------------------------\n";
-    std::cout << "Host: " << host.host << "\n";
-    std::cout << "Host scan duration: " << host.duration().count() << " ms\n\n";
+void print_host(std::ostream& out, const HostResult& host, bool show_reason, bool verbose) {
+    out << "----------------------------------------\n";
+    out << "Host: " << host.host << "\n";
+    out << "Host scan duration: " << host.duration().count() << " ms\n\n";
     
     if (verbose) {
-        std::cout << std::left
-                  << std::setw(8) << "PORT"
-                  << " " << std::setw(12) << "STATE"
-                  << " " << std::setw(15) << "LATENCY(ms)"
-                  << " REASON\n";
+        out << std::left
+            << std::setw(8) << "PORT"
+            << " " << std::setw(12) << "STATE"
+            << " " << std::setw(15) << "LATENCY(ms)"
+            << " REASON\n";
         
         for (const auto& port : host.ports) {
-            std::cout << std::left << std::setw(8) << port.port
-                      << " " << std::setw(12) << port_state_to_string(port.state)
-                      << " " << std::setw(15) << port.latency.count()
-                      << " " << port.reason << "\n";
-            std::cout << "    Attempts: 1\n";
+            out << std::left << std::setw(8) << port.port
+                << " " << std::setw(12) << port_state_to_string(port.state)
+                << " " << std::setw(15) << port.latency.count()
+                << " " << port.reason << "\n";
+            out << "    Attempts: 1\n";
         }
     } else if (show_reason) {
-        std::cout << std::left
-                  << std::setw(8) << "PORT"
-                  << " " << std::setw(12) << "STATE"
-                  << " REASON\n";
+        out << std::left
+            << std::setw(8) << "PORT"
+            << " " << std::setw(12) << "STATE"
+            << " REASON\n";
         
         for (const auto& port : host.ports) {
-            std::cout << std::left << std::setw(8) << port.port
-                      << " " << std::setw(12) << port_state_to_string(port.state)
-                      << " " << port.reason << "\n";
+            out << std::left << std::setw(8) << port.port
+                << " " << std::setw(12) << port_state_to_string(port.state)
+                << " " << port.reason << "\n";
         }
     } else {
-        std::cout << std::left
-                  << std::setw(8) << "PORT"
-                  << " STATE\n";
+        out << std::left
+            << std::setw(8) << "PORT"
+            << " STATE\n";
         
         for (const auto& port : host.ports) {
-            std::cout << std::left << std::setw(8) << port.port
-                      << " " << std::setw(12) << port_state_to_string(port.state)
-                      << "\n";
+            out << std::left << std::setw(8) << port.port
+                << " " << std::setw(12) << port_state_to_string(port.state)
+                << "\n";
         }
     }
-    
-    std::cout << "\n";
+
+    out << "\n";
 }
 
 /*
  * Print scan summary footer.
  */
-void print_summary(const ScanSummary& summary) {
-    std::cout << "========================================\n";
-    std::cout << "Scan Summary\n";
-    std::cout << "========================================\n\n";
-    
-    std::cout << "Hosts scanned: " << summary.total_hosts() << "\n";
-    std::cout << "Ports scanned: " << summary.total_ports() << "\n";
-    std::cout << "Open ports:    " << summary.total_open_ports() << "\n";
-    std::cout << "Total duration: " << format_duration(summary.duration()) << "\n";
+void print_summary(std::ostream& out, const ScanSummary& summary) {
+    out << "========================================\n";
+    out << "Scan Summary\n";
+    out << "========================================\n\n";
+
+    out << "Hosts scanned: " << summary.total_hosts() << "\n";
+    out << "Ports scanned: " << summary.total_ports() << "\n";
+    out << "Open ports:    " << summary.total_open_ports() << "\n";
+    out << "Total duration: " << format_duration(summary.duration()) << "\n";
 }
 
 /*
  * Print quiet mode output.
  * Outputs only open ports in minimal format.
  */
-void print_quiet(const ScanSummary& summary) {
+void print_quiet(std::ostream& out, const ScanSummary& summary) {
     for (const auto& host : summary.hosts) {
         for (const auto& port : host.ports) {
             if (port.state == PortState::Open) {
-                std::cout << host.host << ":" << port.port << " open\n";
+                out << host.host << ":" << port.port << " open\n";
             }
         }
     }
@@ -168,31 +168,31 @@ void print_quiet(const ScanSummary& summary) {
  * Outputs high-level scan statistics without per-host or per-port details.
  * A host is considered "up" if it has at least one open port.
  */
-void print_summary_only(const ScanSummary& summary) {
-    std::cout << "Hosts scanned: " << summary.total_hosts() << "\n";
-    std::cout << "Hosts up: " << summary.hosts_up() << "\n";
-    std::cout << "Ports scanned: " << summary.total_ports() << "\n";
-    std::cout << "Open ports: " << summary.total_open_ports() << "\n";
-    std::cout << "Scan duration: " << format_duration(summary.duration()) << "\n";
+void print_summary_only(std::ostream& out, const ScanSummary& summary) {
+    out << "Hosts scanned: " << summary.total_hosts() << "\n";
+    out << "Hosts up: " << summary.hosts_up() << "\n";
+    out << "Ports scanned: " << summary.total_ports() << "\n";
+    out << "Open ports: " << summary.total_open_ports() << "\n";
+    out << "Scan duration: " << format_duration(summary.duration()) << "\n";
 }
 
 /*
  * Print ports-only mode output.
  * Outputs port results with minimal framing per host.
  */
-void print_ports_only(const ScanSummary& summary) {
+void print_ports_only(std::ostream& out, const ScanSummary& summary) {
     for (std::size_t i = 0; i < summary.hosts.size(); ++i) {
         const auto& host = summary.hosts[i];
         
-        std::cout << "Host: " << host.host << "\n";
+        out << "Host: " << host.host << "\n";
         
         for (const auto& port : host.ports) {
-            std::cout << port.port << "/tcp " 
-                      << port_state_to_lowercase(port.state) << "\n";
+            out << port.port << "/tcp "
+                << port_state_to_lowercase(port.state) << "\n";
         }
         
         if (i < summary.hosts.size() - 1) {
-            std::cout << "\n";
+            out << "\n";
         }
     }
 }
@@ -202,15 +202,15 @@ void print_ports_only(const ScanSummary& summary) {
  * Outputs one line per host with availability status and open port count.
  * Host is "up" if it has at least one port result, "down" otherwise.
  */
-void print_hosts_only(const ScanSummary& summary) {
+void print_hosts_only(std::ostream& out, const ScanSummary& summary) {
     for (const auto& host : summary.hosts) {
         const std::size_t open_count = host.open_ports();
         const bool is_up = host.total_ports() > 0;
         
-        std::cout << host.host << ": " 
-                  << (is_up ? "up" : "down") 
-                  << " (" << open_count << " open port" 
-                  << (open_count == 1 ? "" : "s") << ")\n";
+        out << host.host << ": "
+            << (is_up ? "up" : "down")
+            << " (" << open_count << " open port"
+            << (open_count == 1 ? "" : "s") << ")\n";
     }
 }
 
@@ -224,36 +224,38 @@ void print_hosts_only(const ScanSummary& summary) {
  * Formats the scan results into a human-readable text report with
  * a header, per-host sections, and a summary footer.
  */
-void TextFormatter::print(const ScanSummary& summary, const OutputOptions& options) {
+void TextFormatter::print(std::ostream& out,
+                          const ScanSummary& summary,
+                          const OutputOptions& options) {
     if (options.text_mode == TextMode::Quiet) {
-        print_quiet(summary);
+        print_quiet(out, summary);
         return;
     }
     
     if (options.text_mode == TextMode::Summary) {
-        print_summary_only(summary);
+        print_summary_only(out, summary);
         return;
     }
     
     if (options.text_mode == TextMode::PortsOnly) {
-        print_ports_only(summary);
+        print_ports_only(out, summary);
         return;
     }
     
     if (options.text_mode == TextMode::HostsOnly) {
-        print_hosts_only(summary);
+        print_hosts_only(out, summary);
         return;
     }
     
     const bool verbose = (options.text_mode == TextMode::Verbose);
     
-    print_header(summary);
+    print_header(out, summary);
     
     for (const auto& host : summary.hosts) {
-        print_host(host, options.show_reason, verbose);
+        print_host(out, host, options.show_reason, verbose);
     }
     
-    print_summary(summary);
+    print_summary(out, summary);
 }
 
 } // namespace asioscan

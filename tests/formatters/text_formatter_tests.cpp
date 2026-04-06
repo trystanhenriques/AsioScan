@@ -7,28 +7,10 @@
 #include "result/port_result.hpp"
 
 #include <chrono>
-#include <iostream>
 #include <sstream>
 #include <string>
 
 namespace {
-
-class StdoutCapture {
-public:
-    StdoutCapture() : old_buf_(std::cout.rdbuf(stream_.rdbuf())) {}
-
-    ~StdoutCapture() {
-        std::cout.rdbuf(old_buf_);
-    }
-
-    std::string str() const {
-        return stream_.str();
-    }
-
-private:
-    std::ostringstream stream_;
-    std::streambuf* old_buf_;
-};
 
 asioscan::PortResult make_port(
     std::uint16_t port,
@@ -101,10 +83,9 @@ TEST_CASE("TextFormatter normal mode prints report structure and key fields", "[
     options.show_reason = false;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("AsioScan Scan Report") != std::string::npos);
     REQUIRE(output.find("Host: scanme.nmap.org") != std::string::npos);
@@ -131,10 +112,9 @@ TEST_CASE("TextFormatter quiet mode prints only open ports in script-friendly fo
     options.text_mode = asioscan::TextMode::Quiet;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("scanme.nmap.org:22 open") != std::string::npos);
     REQUIRE(output.find("scanme.nmap.org:443 open") != std::string::npos);
@@ -153,10 +133,9 @@ TEST_CASE("TextFormatter normal mode shows reasons when requested", "[formatter]
     options.show_reason = true;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("REASON") != std::string::npos);
     REQUIRE(output.find("Connection established") != std::string::npos);
@@ -170,10 +149,9 @@ TEST_CASE("TextFormatter summary mode emits high-level counters only", "[formatt
     options.text_mode = asioscan::TextMode::Summary;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("Hosts scanned: 1") != std::string::npos);
     REQUIRE(output.find("Ports scanned: 3") != std::string::npos);
@@ -191,10 +169,9 @@ TEST_CASE("TextFormatter ports-only mode prints per-host port lines", "[formatte
     options.text_mode = asioscan::TextMode::PortsOnly;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("Host: scanme.nmap.org") != std::string::npos);
     REQUIRE(output.find("22/tcp open") != std::string::npos);
@@ -212,10 +189,9 @@ TEST_CASE("TextFormatter hosts-only mode prints host status lines", "[formatter]
     options.text_mode = asioscan::TextMode::HostsOnly;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("up.example: up (1 open port)") != std::string::npos);
     REQUIRE(output.find("down.example: down (0 open ports)") != std::string::npos);
@@ -232,10 +208,9 @@ TEST_CASE("TextFormatter verbose mode includes latency, reason, and attempts", "
     options.show_reason = false;
 
     asioscan::TextFormatter formatter;
-
-    StdoutCapture capture;
-    formatter.print(summary, options);
-    const std::string output = capture.str();
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
 
     REQUIRE(output.find("LATENCY(ms)") != std::string::npos);
     REQUIRE(output.find("REASON") != std::string::npos);

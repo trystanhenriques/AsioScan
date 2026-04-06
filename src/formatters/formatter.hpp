@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iosfwd>
+
 /*
  * Formatter
  * ---------
@@ -46,7 +48,9 @@ public:
      *
      * Both parameters are passed by const reference and must not be modified.
      */
-    virtual void print(const ScanSummary& summary, const OutputOptions& options) = 0;
+    virtual void print(std::ostream& out,
+                       const ScanSummary& summary,
+                       const OutputOptions& options) = 0;
 };
 
 } // namespace asioscan
