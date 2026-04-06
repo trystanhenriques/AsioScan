@@ -45,25 +45,19 @@ add_library(asioscan_lib
         src/result/port_result.hpp
         src/result/host_result.hpp
         src/result/scan_summary.hpp
+        src/cli/cli_parser.hpp
+        src/cli/cli_parser.cpp
         src/scanner/scanner.hpp
         src/scanner/scanner.cpp
         src/formatters/OutputOptions.hpp
         src/formatters/formatter.hpp
         src/formatters/text_formatter.hpp
         src/formatters/text_formatter.cpp
-        src/formatters/text_formatter.hpp
-        #
-        # CLI parsing
-        src/cli/cli_parser.cpp
-        src/cli/cli_parser.hpp
-
 )
 
-# ------------------------------------------------------------
-# Include directories
-# ------------------------------------------------------------
-target_include_directories(asioscan
-        PRIVATE
+# Include directories for consumers of the core library
+target_include_directories(asioscan_lib
+        PUBLIC
         src
 )
 
