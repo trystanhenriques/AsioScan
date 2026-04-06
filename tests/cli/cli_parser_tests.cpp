@@ -107,6 +107,14 @@ TEST_CASE("CLI parser maps output mode and additive flags", "[cli][parser]") {
     REQUIRE(parsed.output.output_file.value() == "results.txt");
 }
 
+TEST_CASE("CLI parser maps verbose mode to output state", "[cli][parser]") {
+    const auto parsed = run_parse({"-v", "-p", "80", "scanme.nmap.org"});
+
+    REQUIRE(parsed.status == asioscan::ParseStatus::Ok);
+    REQUIRE(parsed.output.text_mode == asioscan::TextMode::Verbose);
+    REQUIRE(parsed.output.verbose);
+}
+
 TEST_CASE("CLI parser rejects malformed or invalid ports", "[cli][parser]") {
     SECTION("Port zero") {
         const auto parsed = run_parse({"-p", "0", "scanme.nmap.org"});
@@ -161,4 +169,20 @@ TEST_CASE("CLI parser reports invalid options cleanly", "[cli][parser]") {
     REQUIRE(invocation.result.status == asioscan::ParseStatus::Error);
     REQUIRE(invocation.result.exit_code != 0);
     REQUIRE(invocation.stderr_text.find("--not-a-real-option") != std::string::npos);
+}
+
+TEST_CASE("CLI parser requires at least one target", "[cli][parser]") {
+    const auto invocation = run_parse_with_capture({"-p", "80"});
+
+    REQUIRE(invocation.result.status == asioscan::ParseStatus::Error);
+    REQUIRE(invocation.result.exit_code != 0);
+    REQUIRE(invocation.stderr_text.find("at least one target is required") != std::string::npos);
+}
+
+TEST_CASE("CLI parser rejects blank output path", "[cli][parser]") {
+    const auto invocation = run_parse_with_capture({"-p", "80", "-o", "   ", "scanme.nmap.org"});
+
+    REQUIRE(invocation.result.status == asioscan::ParseStatus::Error);
+    REQUIRE(invocation.result.exit_code != 0);
+    REQUIRE(invocation.stderr_text.find("output path must not be blank") != std::string::npos);
 }

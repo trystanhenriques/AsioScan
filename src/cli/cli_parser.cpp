@@ -2,8 +2,8 @@
 
 #include <CLI/CLI.hpp>
 
-#include <algorithm>
 #include <charconv>
+#include <cctype>
 #include <cstdint>
 #include <iostream>
 #include <set>
@@ -88,6 +88,15 @@ std::vector<std::uint16_t> parse_ports(const std::string& spec) {
     return {ports.begin(), ports.end()};
 }
 
+bool is_blank(const std::string& value) {
+    for (char c : value) {
+        if (!std::isspace(static_cast<unsigned char>(c))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // anonymous namespace
 
 ParseResult parse_cli(int argc, char** argv) {
@@ -154,7 +163,8 @@ ParseResult parse_cli(int argc, char** argv) {
                  "Include connection reason in output");
 
     // --- Output destination ---
-    app.add_option("-o,--output", result.output.output_file,
+    std::string output_path;
+    app.add_option("-o,--output", output_path,
                    "Write output to file instead of stdout");
 
     // --- Parse ---
@@ -173,6 +183,16 @@ ParseResult parse_cli(int argc, char** argv) {
         result.status = ParseStatus::Error;
         result.exit_code = 1;
         return result;
+    }
+
+    if (!output_path.empty()) {
+        if (is_blank(output_path)) {
+            std::cerr << "Error: output path must not be blank.\n";
+            result.status = ParseStatus::Error;
+            result.exit_code = 1;
+            return result;
+        }
+        result.output.output_file = output_path;
     }
 
     // Parse and validate ports
@@ -196,6 +216,8 @@ ParseResult parse_cli(int argc, char** argv) {
     else if (ports_only) result.output.text_mode = TextMode::PortsOnly;
     else if (hosts_only) result.output.text_mode = TextMode::HostsOnly;
     else if (verbose)    result.output.text_mode = TextMode::Verbose;
+
+    result.output.verbose = verbose;
 
     result.status = ParseStatus::Ok;
     return result;
