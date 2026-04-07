@@ -53,6 +53,8 @@ add_library(asioscan_lib
         src/formatters/formatter.hpp
         src/formatters/text_formatter.hpp
         src/formatters/text_formatter.cpp
+        src/formatters/xml_formatter.hpp
+        src/formatters/xml_formatter.cpp
 )
 
 # Include directories for consumers of the core library
