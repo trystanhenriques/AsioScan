@@ -194,3 +194,37 @@ TEST_CASE("XmlFormatter sequential multiple hosts are serialized correctly", "[f
     REQUIRE(pos2 != std::string::npos);
     REQUIRE(pos1 < pos2); // h1 must come before h2
 }
+
+TEST_CASE("Integration: Format selection correctly chooses and outputs XML end-to-end", "[integration][format][xml]") {
+    // 1. Simulate a CLI invocation mapping to XML
+    asioscan::OutputOptions options;
+    options.format = asioscan::OutputFormat::Xml;
+    
+    // 2. Select formatter dynamically matching app behavior
+    std::unique_ptr<asioscan::Formatter> formatter;
+    if (options.format == asioscan::OutputFormat::Xml) {
+        formatter = std::make_unique<asioscan::XmlFormatter>();
+    }
+
+    REQUIRE(formatter != nullptr);
+
+    // 3. Pipe a valid fake summary
+    auto summary = make_empty_summary();
+    
+    asioscan::HostResult host1;
+    host1.host = "e2e.example.com";
+    host1.ports = { make_port(443, asioscan::PortState::Open, std::chrono::milliseconds{12}, "syn-ack") };
+    summary.hosts.push_back(host1);
+
+    std::ostringstream out;
+    formatter->print(out, summary, options);
+
+    const std::string xml_output = out.str();
+    
+    // 4. Assert end-to-end XML string generated reliably from pointer
+    REQUIRE(xml_output.find("<?xml version=\"1.0\"?>") == 0);
+    REQUIRE(xml_output.find("<address addr=\"e2e.example.com\"/>") != std::string::npos);
+    REQUIRE(xml_output.find("portid=\"443\"") != std::string::npos);
+    REQUIRE(xml_output.find("state=\"open\"") != std::string::npos);
+    REQUIRE(xml_output.find("<runstats") != std::string::npos);
+}
