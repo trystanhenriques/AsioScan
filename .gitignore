@@ -93,6 +93,8 @@ logs/
 *.xml
 *.json
 *.txt
+!CMakeLists.txt
+!**/CMakeLists.txt
 
 # =====================================================
 # Dependency artifacts (Boost, vcpkg, Conan)
