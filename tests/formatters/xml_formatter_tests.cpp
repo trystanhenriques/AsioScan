@@ -195,6 +195,77 @@ TEST_CASE("XmlFormatter sequential multiple hosts are serialized correctly", "[f
     REQUIRE(pos1 < pos2); // h1 must come before h2
 }
 
+TEST_CASE("XmlFormatter strips invalid XML control characters", "[formatter][xml][edge]") {
+    auto summary = make_empty_summary();
+    
+    asioscan::HostResult host;
+    host.host = std::string("host\x01\x1bname");
+    
+    // "reason" = 6, '\0' = 1, '\x02' = 1, "test" = 4 => 12 total chars
+    asioscan::PortResult port = make_port(80, asioscan::PortState::Closed, std::chrono::milliseconds{5}, std::string("reason\0\x02test", 12));
+    host.ports.push_back(port);
+    summary.hosts.push_back(host);
+
+    asioscan::OutputOptions options;
+    asioscan::XmlFormatter formatter;
+    std::ostringstream out;
+
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
+    
+    // Debug helper
+    // std::cout << "OUTPUT WAS: " << output << "\n";
+
+    REQUIRE(output.find("addr=\"hostname\"") != std::string::npos);
+    REQUIRE(output.find("reason=\"reasontest\"") != std::string::npos);
+}
+
+TEST_CASE("XmlFormatter handles empty hostname gracefully", "[formatter][xml][edge]") {
+    auto summary = make_empty_summary();
+    asioscan::HostResult host;
+    host.host = "";
+    summary.hosts.push_back(host);
+
+    asioscan::OutputOptions options;
+    asioscan::XmlFormatter formatter;
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
+
+    REQUIRE(output.find("<address addr=\"\"/>") != std::string::npos);
+}
+
+TEST_CASE("XmlFormatter handles zero duration without anomalies", "[formatter][xml][edge]") {
+    asioscan::ScanSummary summary;
+    auto now = std::chrono::steady_clock::now();
+    summary.start_time = now;
+    summary.end_time = now; // 0ms duration
+
+    asioscan::OutputOptions options;
+    asioscan::XmlFormatter formatter;
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
+
+    REQUIRE(output.find("duration=\"0.00\" unit=\"seconds\"") != std::string::npos);
+}
+
+TEST_CASE("XmlFormatter handles missing reason strings gracefully", "[formatter][xml][edge]") {
+    auto summary = make_empty_summary();
+    asioscan::HostResult host;
+    host.host = "local";
+    host.ports.push_back(make_port(80, asioscan::PortState::Open, std::chrono::milliseconds{5}, ""));
+    summary.hosts.push_back(host);
+
+    asioscan::OutputOptions options;
+    asioscan::XmlFormatter formatter;
+    std::ostringstream out;
+    formatter.print(out, summary, options);
+    const std::string output = out.str();
+
+    REQUIRE(output.find("reason=\"\"") != std::string::npos);
+}
+
 TEST_CASE("Integration: Format selection correctly chooses and outputs XML end-to-end", "[integration][format][xml]") {
     // 1. Simulate a CLI invocation mapping to XML
     asioscan::OutputOptions options;

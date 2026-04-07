@@ -15,6 +15,11 @@ namespace {
         std::string output;
         output.reserve(input.size());
         for (char c : input) {
+            // Strip invalid XML 1.0 control characters
+            if (static_cast<unsigned char>(c) < 0x20 && c != '\t' && c != '\n' && c != '\r') {
+                continue;
+            }
+
             switch (c) {
                 case '&':  output += "&amp;"; break;
                 case '<':  output += "&lt;"; break;
