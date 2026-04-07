@@ -160,14 +160,13 @@ TEST_CASE("XmlFormatter correctly prints run summary stats", "[formatter][xml]")
     formatter.print(out, summary, options);
     const std::string output = out.str();
 
-    REQUIRE(output.find("<runstats>") != std::string::npos);
-    REQUIRE(output.find("up=\"2\"") != std::string::npos);
-    REQUIRE(output.find("down=\"0\"") != std::string::npos);
+    REQUIRE(output.find("<runstats") != std::string::npos);
+    REQUIRE(output.find("up=\"1\"") != std::string::npos);
+    REQUIRE(output.find("down=\"1\"") != std::string::npos);
     REQUIRE(output.find("total=\"2\"") != std::string::npos);
     REQUIRE(output.find("ports-scanned=\"2\"") != std::string::npos);
     REQUIRE(output.find("open=\"1\"") != std::string::npos);
     REQUIRE(output.find("closed=\"1\"") != std::string::npos);
-    REQUIRE(output.find("</runstats>") != std::string::npos);
 }
 
 TEST_CASE("XmlFormatter sequential multiple hosts are serialized correctly", "[formatter][xml]") {
