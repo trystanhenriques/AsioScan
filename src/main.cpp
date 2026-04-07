@@ -1,12 +1,14 @@
 #include "cli/cli_parser.hpp"
 #include "scanner/scanner.hpp"
 #include "formatters/text_formatter.hpp"
+#include "formatters/xml_formatter.hpp"
 
 #include <atomic>
 #include <csignal>
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <thread>
 
 namespace {
@@ -66,7 +68,12 @@ int main(int argc, char** argv) {
 
         stop_watcher();
 
-        asioscan::TextFormatter formatter;
+        std::unique_ptr<asioscan::Formatter> formatter;
+        if (parsed.output.format == asioscan::OutputFormat::Xml) {
+            formatter = std::make_unique<asioscan::XmlFormatter>();
+        } else {
+            formatter = std::make_unique<asioscan::TextFormatter>();
+        }
 
         std::ofstream output_file;
         std::ostream* output_stream = &std::cout;
@@ -81,7 +88,7 @@ int main(int argc, char** argv) {
             output_stream = &output_file;
         }
 
-        formatter.print(*output_stream, summary, parsed.output);
+        formatter->print(*output_stream, summary, parsed.output);
 
         return 0;
 

@@ -105,6 +105,22 @@ TEST_CASE("CLI parser maps output mode and additive flags", "[cli][parser]") {
     REQUIRE(parsed.output.show_reason);
     REQUIRE(parsed.output.output_file.has_value());
     REQUIRE(parsed.output.output_file.value() == "results.txt");
+    REQUIRE(parsed.output.format == asioscan::OutputFormat::Text);
+}
+
+TEST_CASE("CLI parser maps XML output format (-oX)", "[cli][parser]") {
+    const auto parsed = run_parse({"--oX", "results.xml", "-p", "80", "scanme.nmap.org"});
+
+    REQUIRE(parsed.status == asioscan::ParseStatus::Ok);
+    REQUIRE(parsed.output.output_file.has_value());
+    REQUIRE(parsed.output.output_file.value() == "results.xml");
+    REQUIRE(parsed.output.format == asioscan::OutputFormat::Xml);
+}
+
+TEST_CASE("CLI parser enforces mutually exclusive output formats", "[cli][parser]") {
+    const auto parsed = run_parse({"-o", "results.txt", "--oX", "results.xml", "-p", "80", "scanme.nmap.org"});
+
+    REQUIRE(parsed.status == asioscan::ParseStatus::Error);
 }
 
 TEST_CASE("CLI parser maps verbose mode to output state", "[cli][parser]") {

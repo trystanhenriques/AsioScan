@@ -163,9 +163,16 @@ ParseResult parse_cli(int argc, char** argv) {
                  "Include connection reason in output");
 
     // --- Output destination ---
-    std::string output_path;
-    app.add_option("-o,--output", output_path,
-                   "Write output to file instead of stdout");
+    std::string output_normal;
+    auto* opt_on = app.add_option("-o,--output,--oN", output_normal,
+                                  "Write normal output to file instead of stdout");
+
+    std::string output_xml;
+    auto* opt_ox = app.add_option("--oX,--output-xml", output_xml,
+                                  "Write XML output to file instead of stdout");
+
+    opt_on->excludes(opt_ox);
+    opt_ox->excludes(opt_on);
 
     // --- Parse ---
     try {
@@ -185,14 +192,24 @@ ParseResult parse_cli(int argc, char** argv) {
         return result;
     }
 
-    if (!output_path.empty()) {
-        if (is_blank(output_path)) {
+    if (*opt_ox) {
+        if (is_blank(output_xml)) {
             std::cerr << "Error: output path must not be blank.\n";
             result.status = ParseStatus::Error;
             result.exit_code = 1;
             return result;
         }
-        result.output.output_file = output_path;
+        result.output.output_file = output_xml;
+        result.output.format = OutputFormat::Xml;
+    } else if (*opt_on) {
+        if (is_blank(output_normal)) {
+            std::cerr << "Error: output path must not be blank.\n";
+            result.status = ParseStatus::Error;
+            result.exit_code = 1;
+            return result;
+        }
+        result.output.output_file = output_normal;
+        result.output.format = OutputFormat::Text;
     }
 
     // Parse and validate ports
