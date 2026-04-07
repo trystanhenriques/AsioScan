@@ -4,9 +4,10 @@
 #include "result/host_result.hpp"
 #include "result/port_result.hpp"
 #include "config/scan_config.hpp"
-#include <ostream>
+#include <chrono>
 #include <iomanip>
-#include <sstream>
+#include <ostream>
+#include <string>
 
 namespace asioscan {
 
