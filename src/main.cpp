@@ -1,7 +1,6 @@
 #include "cli/cli_parser.hpp"
 #include "scanner/scanner.hpp"
-#include "formatters/text_formatter.hpp"
-#include "formatters/xml_formatter.hpp"
+#include "formatters/output_writer.hpp"
 
 #include <atomic>
 #include <csignal>
@@ -68,27 +67,11 @@ int main(int argc, char** argv) {
 
         stop_watcher();
 
-        std::unique_ptr<asioscan::Formatter> formatter;
-        if (parsed.output.format == asioscan::OutputFormat::Xml) {
-            formatter = std::make_unique<asioscan::XmlFormatter>();
-        } else {
-            formatter = std::make_unique<asioscan::TextFormatter>();
+        if (!asioscan::write_output(summary, parsed.output, std::cout)) {
+            std::cerr << "Error: failed to open output file: "
+                      << *parsed.output.output_file << "\n";
+            return 1;
         }
-
-        std::ofstream output_file;
-        std::ostream* output_stream = &std::cout;
-
-        if (parsed.output.output_file.has_value()) {
-            output_file.open(*parsed.output.output_file, std::ios::out | std::ios::trunc);
-            if (!output_file.is_open()) {
-                std::cerr << "Error: failed to open output file: "
-                          << *parsed.output.output_file << "\n";
-                return 1;
-            }
-            output_stream = &output_file;
-        }
-
-        formatter->print(*output_stream, summary, parsed.output);
 
         return 0;
 
