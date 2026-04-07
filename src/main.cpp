@@ -1,12 +1,13 @@
 #include "cli/cli_parser.hpp"
 #include "scanner/scanner.hpp"
-#include "formatters/text_formatter.hpp"
+#include "formatters/output_writer.hpp"
 
 #include <atomic>
 #include <csignal>
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <thread>
 
 namespace {
@@ -66,22 +67,11 @@ int main(int argc, char** argv) {
 
         stop_watcher();
 
-        asioscan::TextFormatter formatter;
-
-        std::ofstream output_file;
-        std::ostream* output_stream = &std::cout;
-
-        if (parsed.output.output_file.has_value()) {
-            output_file.open(*parsed.output.output_file, std::ios::out | std::ios::trunc);
-            if (!output_file.is_open()) {
-                std::cerr << "Error: failed to open output file: "
-                          << *parsed.output.output_file << "\n";
-                return 1;
-            }
-            output_stream = &output_file;
+        if (!asioscan::write_output(summary, parsed.output, std::cout)) {
+            std::cerr << "Error: failed to open output file: "
+                      << *parsed.output.output_file << "\n";
+            return 1;
         }
-
-        formatter.print(*output_stream, summary, parsed.output);
 
         return 0;
 

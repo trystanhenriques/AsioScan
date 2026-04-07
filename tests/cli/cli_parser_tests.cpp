@@ -105,6 +105,46 @@ TEST_CASE("CLI parser maps output mode and additive flags", "[cli][parser]") {
     REQUIRE(parsed.output.show_reason);
     REQUIRE(parsed.output.output_file.has_value());
     REQUIRE(parsed.output.output_file.value() == "results.txt");
+    REQUIRE(parsed.output.format == asioscan::OutputFormat::Text);
+}
+
+TEST_CASE("CLI parser maps XML output format (-oX)", "[cli][parser]") {
+    SECTION("Short flag --oX") {
+        const auto parsed = run_parse({"--oX", "results.xml", "-p", "80", "scanme.nmap.org"});
+        REQUIRE(parsed.status == asioscan::ParseStatus::Ok);
+        REQUIRE(parsed.output.output_file.has_value());
+        REQUIRE(parsed.output.output_file.value() == "results.xml");
+        REQUIRE(parsed.output.format == asioscan::OutputFormat::Xml);
+    }
+    
+    SECTION("Long flag --output-xml") {
+        const auto parsed = run_parse({"--output-xml", "out.xml", "-p", "1-10", "127.0.0.1"});
+        REQUIRE(parsed.status == asioscan::ParseStatus::Ok);
+        REQUIRE(parsed.output.output_file.has_value());
+        REQUIRE(parsed.output.output_file.value() == "out.xml");
+        REQUIRE(parsed.output.format == asioscan::OutputFormat::Xml);
+    }
+}
+
+TEST_CASE("CLI parser maps explicit normal output format (-oN)", "[cli][parser]") {
+    const auto parsed = run_parse({"--oN", "results.txt", "-p", "80", "scanme.nmap.org"});
+
+    REQUIRE(parsed.status == asioscan::ParseStatus::Ok);
+    REQUIRE(parsed.output.output_file.has_value());
+    REQUIRE(parsed.output.output_file.value() == "results.txt");
+    REQUIRE(parsed.output.format == asioscan::OutputFormat::Text);
+}
+
+TEST_CASE("CLI parser enforces mutually exclusive output formats", "[cli][parser]") {
+    SECTION("-o and --oX") {
+        const auto parsed = run_parse({"-o", "results.txt", "--oX", "results.xml", "-p", "80", "scanme.nmap.org"});
+        REQUIRE(parsed.status == asioscan::ParseStatus::Error);
+    }
+    
+    SECTION("--oN and --output-xml") {
+        const auto parsed = run_parse({"--oN", "results.txt", "--output-xml", "results.xml", "-p", "80", "scanme.nmap.org"});
+        REQUIRE(parsed.status == asioscan::ParseStatus::Error);
+    }
 }
 
 TEST_CASE("CLI parser maps verbose mode to output state", "[cli][parser]") {
@@ -180,9 +220,17 @@ TEST_CASE("CLI parser requires at least one target", "[cli][parser]") {
 }
 
 TEST_CASE("CLI parser rejects blank output path", "[cli][parser]") {
-    const auto invocation = run_parse_with_capture({"-p", "80", "-o", "   ", "scanme.nmap.org"});
+    SECTION("-o blank path") {
+        const auto invocation = run_parse_with_capture({"-p", "80", "-o", "   ", "scanme.nmap.org"});
+        REQUIRE(invocation.result.status == asioscan::ParseStatus::Error);
+        REQUIRE(invocation.result.exit_code != 0);
+        REQUIRE(invocation.stderr_text.find("output path must not be blank") != std::string::npos);
+    }
 
-    REQUIRE(invocation.result.status == asioscan::ParseStatus::Error);
-    REQUIRE(invocation.result.exit_code != 0);
-    REQUIRE(invocation.stderr_text.find("output path must not be blank") != std::string::npos);
+    SECTION("--oX blank path") {
+        const auto invocation = run_parse_with_capture({"-p", "80", "--oX", "   ", "scanme.nmap.org"});
+        REQUIRE(invocation.result.status == asioscan::ParseStatus::Error);
+        REQUIRE(invocation.result.exit_code != 0);
+        REQUIRE(invocation.stderr_text.find("output path must not be blank") != std::string::npos);
+    }
 }
