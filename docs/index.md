@@ -18,4 +18,4 @@ This documentation is divided into organized sections to help users and develope
 
 ## Project Information
 
-* [Release Notes & Distribution](release-notes.md) - Changelog, version history, and binary distribution details.
+* [Release & Distribution](release.md) - Pre-release roadmap, version history, and future binary distribution details.
