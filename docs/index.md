@@ -7,7 +7,7 @@ This documentation is divided into organized sections to help users and develope
 ## User Guide
 
 * [Getting Started](getting-started.md) - Installation and basic usage.
-* [CLI Reference](cli-reference.md) - Complete command-line arguments and flags.
+* [CLI Reference](cli.md) - Complete command-line arguments and flags.
 * [Output Formats](output-formats.md) - Details on Text, XML, and other supported machine-parseable outputs.
 
 ## Developer Guide
