@@ -1,62 +1,73 @@
 # AsioScan
 
-AsioScan is a cross-platform TCP connect port scanner written in modern C++ using **Boost.Asio**. It is designed as a clean, modular command-line tool for network exploration and port scanning.
+AsioScan is a fast, cross-platform TCP connect port scanner built with modern C++20 and **Boost.Asio**. It provides a clean, modular command-line interface for network exploration, offering both human-readable and machine-parseable outputs.
 
-## Key Features
+## Design Goals
 
-* TCP connect scanning
-* Single-host and multi-host scans
-* Port ranges and common-port presets
-* Human-readable text and XML output formats
-* Command-line interface
+Designed with a focus on code readability and a modular architecture, AsioScan serves as both a practical networking utility and an educational reference implementation for asynchronous network operations using Boost.Asio.
 
-## Project Status
+## Features
 
-This project is experimental and educational in nature. It is currently under active development. APIs, behavior, and structure are subject to change.
+* **TCP Connect Scanning:** Reliable, connection-based port discovery.
+* **Flexible Targeting:** Supports single-host and multi-host scans.
+* **Port Configuration:** Scan explicit port lists, ranges, or utilize common-port presets.
+* **Multiple Output Formats:** Standard console text for users, and XML for automated tool integration.
+* **Cross-Platform:** Native support for Windows, macOS, and Linux.
 
-## Supported Platforms
+---
 
-* Cross-platform (Windows, macOS, Linux)
+## Usage
 
-## Build from source
-
-AsioScan is built using CMake. Ensure you have a modern C++20 compiler, CMake, and Boost installed.
+### Quick Start
 
 ```bash
-mkdir build
-cd build
+asioscan 127.0.0.1 --ports 80,443
+```
+
+### Example Output
+
+```text
+Scanning 127.0.0.1...
+Port 80    : OPEN
+Port 443   : OPEN
+Scan complete.
+```
+
+---
+
+## Development Guide
+
+### Prerequisites
+
+* A modern **C++20** compatible compiler (GCC, Clang, or MSVC)
+* **CMake** (3.15+)
+* **Boost** libraries (specifically Boost.Asio)
+
+### Building from Source
+
+```bash
+mkdir build && cd build
 cmake ..
 cmake --build .
 ```
 
-## Running tests
+### Running Tests
 
-The project uses Catch2 for unit testing. After building, you can run the test suite:
+AsioScan integrates **Catch2** for unit testing. After building, run the test suite via CTest:
 
 ```bash
 cd build
 ctest --output-on-failure
 ```
 
-## Quick usage examples
+---
 
-To scan a target:
-```bash
-asioscan --target 127.0.0.1 --ports 80,443
-```
+## Scope and Status
 
-## Output formats
+**Project Status:** *Experimental / Active Development*
+The project is currently establishing its foundation. Internal APIs, behavior, and output format structures are subject to change. Extensive documentation linking to `docs/` is planned for a future stable release.
 
-AsioScan supports multiple output formats:
-* **Text**: Standard human-readable output to the console.
-* **XML**: Structured XML output for integration with other tools and scripts.
-
-## Current scope / out of scope
-
-Presently, the focus is on robust TCP connect scanning. Advanced scan types (like SYN stealth scans that require raw sockets and elevated privileges) are planned for future development but are currently out of scope until the foundational architecture is complete.
-
-## Documentation
-
-Further detailed documentation linking to `docs/` is planned for a future release.
+**Current Scope Limitations:**
+Presently, the focus is strictly on reliable TCP connect scanning. Advanced scan types (like SYN stealth scans, which require raw sockets and elevated privileges) are currently out of scope until the core architecture is fully stabilized.
 
 
