@@ -12,7 +12,7 @@ This documentation is divided into organized sections to help users and develope
 
 ## Developer Guide
 
-* [Building from Source](building.md) - Compiling with CMake, C++20, and Boost.Asio.
+* [Building from Source](build.md) - Compiling with CMake, C++20, and Boost.Asio.
 * [Testing](testing.md) - Running the Catch2 test suite.
 * [Architecture](architecture.md) - High-level design, concurrency model, and internals.
 
