@@ -62,10 +62,16 @@ ctest --output-on-failure
 
 ---
 
+## Documentation
+
+For comprehensive guides on usage, building, CLI references, and architecture, please visit the [**AsioScan Documentation Hub**](docs/index.md).
+
+---
+
 ## Scope and Status
 
 **Project Status:** *Experimental / Active Development*
-The project is currently establishing its foundation. Internal APIs, behavior, and output format structures are subject to change. Extensive documentation linking to `docs/` is planned for a future stable release.
+The project is currently establishing its foundation. Internal APIs, behavior, and output format structures are subject to change.
 
 **Current Scope Limitations:**
 Presently, the focus is strictly on reliable TCP connect scanning. Advanced scan types (like SYN stealth scans, which require raw sockets and elevated privileges) are currently out of scope until the core architecture is fully stabilized.
