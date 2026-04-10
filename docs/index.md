@@ -14,7 +14,7 @@ This documentation is divided into organized sections to help users and develope
 
 * [Building from Source](build.md) - Compiling with CMake, C++20, and Boost.Asio.
 * [Testing](testing.md) - Test organization, framework details, and Catch2 execution.
-* [Architecture](architecture.md) - High-level design, concurrency model, and internals.
+* [Architecture](architecture.md) - High-level design, data flow, concurrency model, and internals.
 
 ## Project Information
 
