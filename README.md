@@ -21,44 +21,44 @@ Designed with a focus on code readability and a modular architecture, AsioScan s
 ### Quick Start
 
 ```bash
-asioscan 127.0.0.1 --ports 80,443
+asioscan 127.0.0.1 -p 80,443
 ```
 
 ### Example Output
 
 ```text
-Scanning 127.0.0.1...
-Port 80    : OPEN
-Port 443   : OPEN
-Scan complete.
+========================================
+AsioScan Scan Report
+========================================
+...
+----------------------------------------
+Host: 127.0.0.1
+Host scan duration: 512 ms
+
+PORT     STATE
+80       Filtered    
+443      Filtered    
+
+========================================
+Scan Summary
+========================================
+
+Hosts scanned: 1
+Ports scanned: 2
+Open ports:    0
+Total duration: 0.51s
 ```
 
 ---
 
 ## Development Guide
 
-### Prerequisites
+The core logic, CLI parser, and network scanner are written predominantly in modern **C++20** and leverage **Boost.Asio** for high-performance TCP connect sweeping.
 
-* A modern **C++20** compatible compiler (GCC, Clang, or MSVC)
-* **CMake** (3.15+)
-* **Boost** libraries (specifically Boost.Asio)
+* **Build System:** CMake (3.16+)
+* **Testing:** Catch2 (via CTest)
 
-### Building from Source
-
-```bash
-mkdir build && cd build
-cmake ..
-cmake --build .
-```
-
-### Running Tests
-
-AsioScan integrates **Catch2** for unit testing. After building, run the test suite via CTest:
-
-```bash
-cd build
-ctest --output-on-failure
-```
+Please refer to the [**Building from Source**](docs/build.md) and [**Testing**](docs/testing.md) guides for full prerequisites, library installation via your system's package manager, and exact compilation steps.
 
 ---
 

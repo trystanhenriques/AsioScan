@@ -67,4 +67,4 @@ Because formatters are decoupled from the scanner, they can process data predict
 This strict component isolation makes unit testing straightforward and highly deterministic:
 *   **CLI Tests**: We pass mocked `argv` arrays to the parser and assert that the resulting `ScanConfig` has the exact port vectors and timeouts we expect.
 *   **Formatter Tests**: Instead of scanning a real network, the test suite constructs a fake, memory-only `ScanSummary` (injecting specific latencies, states, and string payloads) and passes it directly to the formatters. This allows us to assert that the generated Text or XML perfectly matches the desired schema without touching a live socket.
-*   **Scanner Tests**: By mocking local listeners, the engine can be validated in isolation to ensure concurrency limits and timeouts function identically across operating systems. 
+*   **Scanner Tests**: The asynchronous engine is validated to ensure task scheduling, concurrency bounds, and cooperative cancellation function accurately across operating systems.
