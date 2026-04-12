@@ -5,7 +5,7 @@
 #include <asio/steady_timer.hpp>
 #include <asio/connect.hpp>
 #include <asio/post.hpp>
-#include <system_error>
+#include <asio/error.hpp>
 
 #include <chrono>
 #include <stdexcept>
@@ -112,7 +112,7 @@ public:
         cancel_active_timers();
 
         // Ensure io_context exits if no operations are in-flight
-        asio::post(io_context_, [this]() {
+        asio::post(io_context_.get_executor(), [this]() {
             finalize_if_cancelled_and_idle();
         });
     }
@@ -212,12 +212,12 @@ private:
 
     void scan_port_async(const std::string& host, std::uint16_t port) {
         using asio::ip::tcp;
-        using std::error_code;
+        using asio::error_code;
 
         // Allocate per-operation resources
-        auto socket = std::make_shared<tcp::socket>(io_context_);
+        auto socket = std::make_shared<tcp::socket>(io_context_.get_executor());
         auto timer = std::make_shared<asio::steady_timer>(
-            io_context_,
+            io_context_.get_executor(),
             config_.timeout
         );
 
@@ -234,7 +234,7 @@ private:
         auto completed = std::make_shared<bool>(false);
 
         // Synchronous resolution (acceptable for v1; async in future)
-        tcp::resolver resolver(io_context_);
+        tcp::resolver resolver(io_context_.get_executor());
         error_code resolve_ec;
 
         auto endpoints = resolver.resolve(
@@ -310,7 +310,7 @@ private:
         );
     }
 
-    void classify_connect_result(const std::error_code& ec,
+    void classify_connect_result(const asio::error_code& ec,
                                   PortResult& result) {
         if (cancel_requested_ && ec == asio::error::operation_aborted) {
             result.state = PortState::Error;
@@ -399,7 +399,7 @@ private:
         }
 
         for (auto& socket : sockets) {
-            std::error_code ec;
+            asio::error_code ec;
             socket->cancel(ec);
         }
     }
