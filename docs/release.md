@@ -7,7 +7,7 @@
 The primary distribution goal for AsioScan is to provide a frictionless experience for both end-users and developers. 
 To achieve this, the release process will focus on:
 * **Semantic Versioning**: Strict adherence to SemVer (vMAJOR.MINOR.PATCH) for predictable updates.
-* **Standalone Executables**: Providing cleanly compiled, ready-to-run binaries that do not require users to install heavy C++ toolchains or Boost libraries on their system.
+* **Standalone Executables**: Providing cleanly compiled, ready-to-run binaries that do not require users to install heavy C++ toolchains on their system.
 * **Automation**: Utilizing CI/CD pipelines to ensure tests run and binaries are deterministically built for every tag.
 
 ## Supported Target Platforms

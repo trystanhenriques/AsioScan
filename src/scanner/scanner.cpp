@@ -1,11 +1,11 @@
 #include "scanner/scanner.hpp"
 
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/connect.hpp>
-#include <boost/asio/post.hpp>
-#include <boost/system/error_code.hpp>
+#include <asio/io_context.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/steady_timer.hpp>
+#include <asio/connect.hpp>
+#include <asio/post.hpp>
+#include <asio/error.hpp>
 
 #include <chrono>
 #include <stdexcept>
@@ -112,7 +112,7 @@ public:
         cancel_active_timers();
 
         // Ensure io_context exits if no operations are in-flight
-        boost::asio::post(io_context_, [this]() {
+        asio::post(io_context_.get_executor(), [this]() {
             finalize_if_cancelled_and_idle();
         });
     }
@@ -211,13 +211,13 @@ private:
      */
 
     void scan_port_async(const std::string& host, std::uint16_t port) {
-        using boost::asio::ip::tcp;
-        using boost::system::error_code;
+        using asio::ip::tcp;
+        using asio::error_code;
 
         // Allocate per-operation resources
-        auto socket = std::make_shared<tcp::socket>(io_context_);
-        auto timer = std::make_shared<boost::asio::steady_timer>(
-            io_context_,
+        auto socket = std::make_shared<tcp::socket>(io_context_.get_executor());
+        auto timer = std::make_shared<asio::steady_timer>(
+            io_context_.get_executor(),
             config_.timeout
         );
 
@@ -234,7 +234,7 @@ private:
         auto completed = std::make_shared<bool>(false);
 
         // Synchronous resolution (acceptable for v1; async in future)
-        tcp::resolver resolver(io_context_);
+        tcp::resolver resolver(io_context_.get_executor());
         error_code resolve_ec;
 
         auto endpoints = resolver.resolve(
@@ -252,7 +252,7 @@ private:
         }
 
         // Launch async connect
-        boost::asio::async_connect(
+        asio::async_connect(
             *socket,
             endpoints,
             [this, socket, timer, result, completed, start_time, host]
@@ -288,7 +288,7 @@ private:
                 *completed = true;
 
                 // Timer cancelled by connect success
-                if (ec == boost::asio::error::operation_aborted) {
+                if (ec == asio::error::operation_aborted) {
                     return;
                 }
 
@@ -310,18 +310,18 @@ private:
         );
     }
 
-    void classify_connect_result(const boost::system::error_code& ec,
+    void classify_connect_result(const asio::error_code& ec,
                                   PortResult& result) {
-        if (cancel_requested_ && ec == boost::asio::error::operation_aborted) {
+        if (cancel_requested_ && ec == asio::error::operation_aborted) {
             result.state = PortState::Error;
             result.reason = "Cancelled";
         } else if (!ec) {
             result.state = PortState::Open;
             result.reason = "Connection established";
-        } else if (ec == boost::asio::error::connection_refused) {
+        } else if (ec == asio::error::connection_refused) {
             result.state = PortState::Closed;
             result.reason = "Connection refused";
-        } else if (ec == boost::asio::error::operation_aborted) {
+        } else if (ec == asio::error::operation_aborted) {
             result.state = PortState::Filtered;
             result.reason = "Timeout";
         } else {
@@ -389,7 +389,7 @@ private:
      */
 
     void cancel_active_sockets() {
-        std::vector<std::shared_ptr<boost::asio::ip::tcp::socket>> sockets;
+        std::vector<std::shared_ptr<asio::ip::tcp::socket>> sockets;
         sockets.reserve(active_sockets_.size());
 
         for (const auto& weak : active_sockets_) {
@@ -399,13 +399,13 @@ private:
         }
 
         for (auto& socket : sockets) {
-            boost::system::error_code ec;
+            asio::error_code ec;
             socket->cancel(ec);
         }
     }
 
     void cancel_active_timers() {
-        std::vector<std::shared_ptr<boost::asio::steady_timer>> timers;
+        std::vector<std::shared_ptr<asio::steady_timer>> timers;
         timers.reserve(active_timers_.size());
 
         for (const auto& weak : active_timers_) {
@@ -470,11 +470,11 @@ private:
     std::vector<HostResult> completed_hosts_;
 
     // Active operation tracking for cancellation
-    std::vector<std::weak_ptr<boost::asio::ip::tcp::socket>> active_sockets_;
-    std::vector<std::weak_ptr<boost::asio::steady_timer>> active_timers_;
+    std::vector<std::weak_ptr<asio::ip::tcp::socket>> active_sockets_;
+    std::vector<std::weak_ptr<asio::steady_timer>> active_timers_;
 
     // Event loop
-    boost::asio::io_context io_context_;
+    asio::io_context io_context_;
 };
 
 /*
