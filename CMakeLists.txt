@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 # Project definition
 project(AsioScan
         VERSION 0.1.0
-        DESCRIPTION "Cross-platform TCP port scanner using Boost.Asio"
+        DESCRIPTION "Cross-platform TCP port scanner using standalone Asio"
         LANGUAGES CXX
 )
 
@@ -79,7 +79,7 @@ if(NOT TARGET asio)
     target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
 endif()
 
-# We define ASIO_STANDALONE so it maps directly to std:: instead of boost::
+# We define ASIO_STANDALONE so it maps directly to std::instead of boost::
 target_compile_definitions(asioscan_lib PUBLIC ASIO_STANDALONE)
 
 target_link_libraries(asioscan_lib PUBLIC asio)

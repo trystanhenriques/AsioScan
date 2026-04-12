@@ -117,7 +117,7 @@ public:
 
 private:
     class Impl;                     // Opaque implementation (defined in scanner.cpp)
-    std::unique_ptr<Impl> impl_;    // PIMPL to keep Boost.Asio out of the public header
+    std::unique_ptr<Impl> impl_;    // PIMPL to keep Asio out of the public header
 };
 
 } // namespace asioscan
