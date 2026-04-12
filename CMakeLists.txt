@@ -65,22 +65,24 @@ target_include_directories(asioscan_lib
         src
 )
 
-# Boost (cross-platform)
-if (WIN32)
-    find_package(Boost REQUIRED COMPONENTS system)
+# Standalone Asio (cross-platform, header-only framework)
+FetchContent_Declare(
+    asio
+    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+    GIT_TAG        asio-1-30-2 # Latest stable tag
+)
+FetchContent_MakeAvailable(asio)
 
-    target_link_libraries(asioscan_lib
-        PUBLIC
-        Boost::system
-    )
-else()
-    find_package(Boost CONFIG REQUIRED)
-
-    target_link_libraries(asioscan_lib
-        PUBLIC
-        Boost::boost   # headers-only target (this exists on Homebrew)
-    )
+# Create an exact target if Asio's internal CMake changes don't provide one
+if(NOT TARGET asio)
+    add_library(asio INTERFACE)
+    target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
 endif()
+
+# We define ASIO_STANDALONE so it maps directly to std:: instead of boost::
+target_compile_definitions(asioscan_lib PUBLIC ASIO_STANDALONE)
+
+target_link_libraries(asioscan_lib PUBLIC asio)
 
 # CLI11 is used by the CLI parser implementation
 target_link_libraries(asioscan_lib PRIVATE CLI11::CLI11)
