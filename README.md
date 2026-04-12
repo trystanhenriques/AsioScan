@@ -1,10 +1,10 @@
 # AsioScan
 
-AsioScan is a fast, cross-platform TCP connect port scanner built with modern C++20 and **Boost.Asio**. It provides a clean, modular command-line interface for network exploration, offering both human-readable and machine-parseable outputs.
+AsioScan is a fast, cross-platform TCP connect port scanner built with modern C++20 and **standalone Asio**. It provides a clean, modular command-line interface for network exploration, offering both human-readable and machine-parseable outputs.
 
 ## Design Goals
 
-Designed with a focus on code readability and a modular architecture, AsioScan serves as both a practical networking utility and an educational reference implementation for asynchronous network operations using Boost.Asio.
+Designed with a focus on code readability and a modular architecture, AsioScan serves as both a practical networking utility and an educational reference implementation for asynchronous network operations using standalone Asio.
 
 ## Features
 
@@ -53,7 +53,7 @@ Total duration: 0.51s
 
 ## Development Guide
 
-The core logic, CLI parser, and network scanner are written predominantly in modern **C++20** and leverage **Boost.Asio** for high-performance TCP connect sweeping.
+The core logic, CLI parser, and network scanner are written predominantly in modern **C++20** and leverage **standalone Asio** for high-performance TCP connect sweeping.
 
 * **Build System:** CMake (3.16+)
 * **Testing:** Catch2 (via CTest)

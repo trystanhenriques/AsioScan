@@ -20,7 +20,7 @@ The core execution path of AsioScan follows a strict, unidirectional pipeline:
          v                             |
   +--------------+                     |
   |   Scanner    |                     |
-  | (Boost.Asio) |                     v
+  |    (Asio)    |                     v
   +--------------+             +---------------+
          |                     | Output Writer |
     ScanSummary  ------------> |  (Formatters) |
@@ -32,7 +32,7 @@ The core execution path of AsioScan follows a strict, unidirectional pipeline:
 
 1. **Input:** The user provides arguments via the command line.
 2. **Parsing:** The `cli_parser` processes these arguments, enforcing constraints and validating inputs. It outputs two detached configurations: a `ScanConfig` and an `OutputOptions`.
-3. **Execution:** The `Scanner` engine takes the immutable `ScanConfig`, connects to the network via `Boost.Asio`, and aggregates the results into a `ScanSummary`.
+3. **Execution:** The `Scanner` engine takes the immutable `ScanConfig`, connects to the network via `standalone Asio`, and aggregates the results into a `ScanSummary`.
 4. **Formatting:** The `output_writer` evaluates the `OutputOptions` to select a specific `Formatter` (Text or XML) and renders the `ScanSummary` to the specified output stream.
 
 ---
@@ -49,7 +49,7 @@ AsioScan uses simple, immutable (or strictly managed) data structures as interna
 *   **`ScanSummary`**: The final artifact of a scan run. It contains a list of `HostResult` objects, each of which contains a list of `PortResult` objects (detailing individual port states, latencies, and connection reasons).
 
 ### 3. Asynchronous Scanner (`src/scanner/`)
-The `Scanner` is the engine of AsioScan. It runs a single-threaded asynchronous task loop utilizing `Boost.Asio::io_context`.
+The `Scanner` is the engine of AsioScan. It runs a single-threaded asynchronous task loop utilizing `asio::io_context`.
 *   It dynamically bounds concurrency by maintaining a strict limit of in-flight connection attempts.
 *   It utilizes cooperative cancellation: if the user interrupts the program (`Ctrl+C`), the scanner stops scheduling new ports, drains the existing active connections, and gracefully returns a partial `ScanSummary`.
 

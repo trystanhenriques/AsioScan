@@ -8,7 +8,6 @@ To build AsioScan, your system must have the following tools installed:
 
 * **C++ Compiler**: A compiler supporting C++20 (e.g., GCC 10+, Clang 10+, or MSVC 2019+).
 * **CMake**: Version 3.16 or newer.
-* **Boost Libraries**: Specifically `Boost.Asio` and `Boost.System`. This must be installed on your system prior to building.
 
 ### Dependency Management
 
@@ -23,22 +22,17 @@ The build system automatically fetches and builds the following internal depende
 ### Linux (Debian/Ubuntu)
 ```bash
 sudo apt update
-sudo apt install build-essential cmake libboost-all-dev
+sudo apt install build-essential cmake
 ```
 
 ### macOS (Homebrew)
 ```bash
-brew install cmake boost
+brew install cmake
 ```
 
 ### Windows
 1. **Compiler**: Install Visual Studio (2019 or 2022) with the "Desktop development with C++" workload.
 2. **CMake**: Install via the Visual Studio Installer or download from [cmake.org](https://cmake.org/).
-3. **Boost**: The easiest way to get Boost on Windows is using [vcpkg](https://vcpkg.io/):
-   ```bash
-   vcpkg install boost-system:x64-windows
-   ```
-   *Note: Using vcpkg requires providing the toolchain file to CMake during configuration.*
 
 ---
 
@@ -59,10 +53,10 @@ brew install cmake boost
    cmake -DCMAKE_BUILD_TYPE=Release ..
    ```
 
-   *For Windows (using vcpkg):*
+   *For Windows:*
    ```powershell
    mkdir build && cd build
-   cmake .. -DCMAKE_TOOLCHAIN_FILE="C:\path\to\vcpkg\scripts\buildsystems\vcpkg.cmake"
+   cmake ..
    ```
 
 3. **Compile the project:**
@@ -111,4 +105,3 @@ Alternatively, you can invoke the Catch2 test runner directly for more granular 
 **Windows:**
 ```powershell
 .\tests\Release\asioscan_tests.exe
-```
