@@ -5,23 +5,23 @@ on:
   pull_request:
 
 jobs:
-     build-and-test:
-       name: Build and Test (${{ matrix.os }})
-       runs-on: ${{ matrix.os }}
-       strategy:
-         matrix:
-           os: [ubuntu-latest, windows-latest, macos-latest]
+  build-and-test:
+    name: Build and Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
 
-       steps:
-       - name: Check out the repository
-         uses: actions/checkout@v4
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
-       - name: Configure CMake
-         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
 
-       - name: Build the project
-         run: cmake --build build --config Release
+      - name: Configure CMake
+        run: cmake --preset ${{ matrix.os }}
 
-       - name: Run tests with CTest
-         working-directory: build
-         run: ctest -C Release --output-on-failure
+      - name: Build the project
+        run: cmake --build --preset ${{ matrix.os }}
+
+      - name: Run tests with CTest
+        run: ctest --preset ${{ matrix.os }}

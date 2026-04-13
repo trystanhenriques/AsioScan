@@ -1,0 +1,76 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ci-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "ubuntu-latest",
+      "inherits": "ci-base",
+      "generator": "Unix Makefiles"
+    },
+    {
+      "name": "macos-latest",
+      "inherits": "ci-base",
+      "generator": "Unix Makefiles"
+    },
+    {
+      "name": "windows-latest",
+      "inherits": "ci-base",
+      "generator": "Visual Studio 17 2022"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ubuntu-latest",
+      "configurePreset": "ubuntu-latest",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-latest",
+      "configurePreset": "macos-latest",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-latest",
+      "configurePreset": "windows-latest",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ubuntu-latest",
+      "configurePreset": "ubuntu-latest",
+      "configuration": "Release",
+      "output": {
+        "onFailure": true
+      }
+    },
+    {
+      "name": "macos-latest",
+      "configurePreset": "macos-latest",
+      "configuration": "Release",
+      "output": {
+        "onFailure": true
+      }
+    },
+    {
+      "name": "windows-latest",
+      "configurePreset": "windows-latest",
+      "configuration": "Release",
+      "output": {
+        "onFailure": true
+      }
+    }
+  ]
+}
