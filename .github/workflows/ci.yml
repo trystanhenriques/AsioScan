@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Allow all OS builds to finish even if one platform fails
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Configure project
+        run: cmake --preset ${{ matrix.os }}
+
+      - name: Build project
+        run: cmake --build --preset ${{ matrix.os }}
+
+      - name: Run tests
+        run: ctest --preset ${{ matrix.os }}

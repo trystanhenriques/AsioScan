@@ -95,6 +95,8 @@ logs/
 *.txt
 !CMakeLists.txt
 !**/CMakeLists.txt
+!CMakePresets.json
+CMakeUserPresets.json
 
 # =====================================================
 # Dependency artifacts (Boost, vcpkg, Conan)
