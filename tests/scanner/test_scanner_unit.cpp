@@ -106,7 +106,8 @@ TEST_CASE("Scanner handles mid-scan cooperative cancellation securely", "[scanne
     // single-threaded queue drains without deadlock and properly maps partial results.
     auto config = make_minimal_valid_config();
     // Use test-net IPs to hang the connections on purpose so we can cancel them before they timeout
-    config.targets = {"192.0.2.1", "192.0.2.2", "192.0.2.3"};
+    // Add localhost as the first target so it completes quickly and triggers cancellation on all platforms
+    config.targets = {"127.0.0.1", "192.0.2.1", "192.0.2.2", "192.0.2.3"};
     config.ports = {80, 443};
     config.timeout = std::chrono::milliseconds{5000}; 
 
