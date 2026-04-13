@@ -82,7 +82,9 @@ endif()
 # We define ASIO_STANDALONE so it maps directly to std:: instead of boost::
 target_compile_definitions(asioscan_lib PUBLIC ASIO_STANDALONE)
 
-target_link_libraries(asioscan_lib PUBLIC asio)
+# Asio relies on pthreads on Linux platforms
+find_package(Threads REQUIRED)
+target_link_libraries(asioscan_lib PUBLIC asio Threads::Threads)
 
 # CLI11 is used by the CLI parser implementation
 target_link_libraries(asioscan_lib PRIVATE CLI11::CLI11)
@@ -105,8 +107,5 @@ endif()
 
 # Enable CTest and add test targets
 enable_testing()
-
-# Catch2 test discovery helpers (Catch.cmake)
-list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 
 add_subdirectory(tests)
