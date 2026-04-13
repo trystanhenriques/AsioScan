@@ -32,45 +32,49 @@
   ],
   "buildPresets": [
     {
-      "name": "ubuntu-latest",
-      "configurePreset": "ubuntu-latest",
+      "name": "ci-build-base",
+      "hidden": true,
       "configuration": "Release"
+    },
+    {
+      "name": "ubuntu-latest",
+      "inherits": "ci-build-base",
+      "configurePreset": "ubuntu-latest"
     },
     {
       "name": "macos-latest",
-      "configurePreset": "macos-latest",
-      "configuration": "Release"
+      "inherits": "ci-build-base",
+      "configurePreset": "macos-latest"
     },
     {
       "name": "windows-latest",
-      "configurePreset": "windows-latest",
-      "configuration": "Release"
+      "inherits": "ci-build-base",
+      "configurePreset": "windows-latest"
     }
   ],
   "testPresets": [
     {
-      "name": "ubuntu-latest",
-      "configurePreset": "ubuntu-latest",
+      "name": "ci-test-base",
+      "hidden": true,
       "configuration": "Release",
       "output": {
         "outputOnFailure": true
       }
+    },
+    {
+      "name": "ubuntu-latest",
+      "inherits": "ci-test-base",
+      "configurePreset": "ubuntu-latest"
     },
     {
       "name": "macos-latest",
-      "configurePreset": "macos-latest",
-      "configuration": "Release",
-      "output": {
-        "outputOnFailure": true
-      }
+      "inherits": "ci-test-base",
+      "configurePreset": "macos-latest"
     },
     {
       "name": "windows-latest",
-      "configurePreset": "windows-latest",
-      "configuration": "Release",
-      "output": {
-        "outputOnFailure": true
-      }
+      "inherits": "ci-test-base",
+      "configurePreset": "windows-latest"
     }
   ]
 }

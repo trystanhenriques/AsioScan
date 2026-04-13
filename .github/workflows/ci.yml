@@ -10,18 +10,20 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      # Allow all OS builds to finish even if one platform fails
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - name: Check out the repository
+      - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Configure CMake
+      - name: Configure project
         run: cmake --preset ${{ matrix.os }}
 
-      - name: Build the project
+      - name: Build project
         run: cmake --build --preset ${{ matrix.os }}
 
-      - name: Run tests with CTest
+      - name: Run tests
         run: ctest --preset ${{ matrix.os }}
