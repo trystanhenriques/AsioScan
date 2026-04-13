@@ -400,7 +400,7 @@ private:
 
         for (auto& socket : sockets) {
             asio::error_code ec;
-            socket->cancel(ec);
+            socket->close(ec);
         }
     }
 
