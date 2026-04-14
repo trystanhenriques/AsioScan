@@ -111,6 +111,8 @@ For more details on the testing framework and test organization, see the [**Test
 
 ---
 
-For all other information, please explore the [**AsioScan Documentation Hub**](docs/index.md).
+## Documentation Hub
+
+For all other information, including advanced usage, architecture breakdowns, and pre-release roadmaps, please explore the [**AsioScan Documentation Hub**](docs/index.md).
 
 
