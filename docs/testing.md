@@ -71,3 +71,10 @@ The tests are physically separated from the main source code and reside in the `
 
 To provide reliable CI/CD and local development execution, the vast majority of AsioScan's tests are completely deterministic. 
 For example, the formatter and CLI tests do not access the live network. They test internal parsing rules and string generation using mocked inputs, ensuring that a test passing on Linux will also pass flawlessly on Windows.
+
+---
+
+## Continuous Integration (CI)
+
+AsioScan features a rigorous, multi-platform **GitHub Actions CI** matrix targeting Ubuntu, Windows, and macOS endpoints. 
+Each pull request and push to the repository seamlessly provisions the latest CMake Presets environment, builds the solution, and executes `ctest` targeting 100% pass coverage to guarantee the integrity of the project before a release.

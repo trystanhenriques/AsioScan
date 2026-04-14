@@ -1,28 +1,46 @@
 # AsioScan
 
-AsioScan is a fast, cross-platform TCP connect port scanner built with modern C++20 and **standalone Asio**. It provides a clean, modular command-line interface for network exploration, offering both human-readable and machine-parseable outputs.
+![CI](https://github.com/trystanhenriques/AsioScan/actions/workflows/ci.yml/badge.svg)
 
-## Design Goals
+**AsioScan** is a lightning-fast, cross-platform TCP connect port scanner built using **Modern C++20** and **standalone Asio**. 
 
-Designed with a focus on code readability and a modular architecture, AsioScan serves as both a practical networking utility and an educational reference implementation for asynchronous network operations using standalone Asio.
-
-## Features
-
-* **TCP Connect Scanning:** Reliable, connection-based port discovery.
-* **Flexible Targeting:** Supports single-host and multi-host scans.
-* **Port Configuration:** Scan explicit port lists, ranges, or utilize common-port presets.
-* **Multiple Output Formats:** Standard console text for users, and XML for automated tool integration.
-* **Cross-Platform:** Native support for Windows, macOS, and Linux.
+Designed for high throughput, memory safety, and non-blocking I/O, AsioScan serves as a practical utility for network exploration and a robust example of asynchronous programming in C++.
 
 ---
 
-## Usage
+## Features
 
-### Quick Start
+* **TCP Connect Sweeping:** Reliable, RFC-compliant connection-based port discovery.
+* **Flexible Targeting:** Supports targeting single hosts or multiple IP/hostname resolutions concurrently.
+* **Granular Concurrency:** Explicit bounding of max in-flight connections to avoid exhausting OS file descriptor limits.
+* **Multiple Output Modes:** Output to standard text, quiet (script-friendly) mode, or full XML layouts for automated toolchains.
 
+For a deeper dive into the tool's non-blocking, single-threaded cooperative concurrency engine, see the [**Architecture Documentation**](docs/architecture.md).
+
+---
+
+## Quick Start
+
+AsioScan features a highly modular command-line interface powered by `CLI11`. 
+
+### Basic Usage
 ```bash
-asioscan 127.0.0.1 -p 80,443
+asioscan <targets> -p <ports> [options]
 ```
+```bash
+# Scan a single host on common web ports
+asioscan 127.0.0.1 -p 80,443
+
+# Sweep a broad range of ports aggressively
+asioscan scanme.nmap.org -p 1-10000 -c 500 -t 200
+```
+
+### Key CLI Options Preview
+* `-p, --ports` : Ports to scan (e.g., `80`, `22,80,443`, `1-1024`).
+* `-c, --concurrency` : Maximum concurrent async connections (default: `200`).
+* `-t, --timeout` : Per-port TCP connection timeout in milliseconds (default: `500`).
+* `-q, --quiet` : Script-friendly minimum output showing only open ports.
+* `--oX, --output-xml` : Write structured XML output to a file for automation.
 
 ### Example Output
 
@@ -49,31 +67,47 @@ Open ports:    0
 Total duration: 0.51s
 ```
 
----
-
-## Development Guide
-
-The core logic, CLI parser, and network scanner are written predominantly in modern **C++20** and leverage **standalone Asio** for high-performance TCP connect sweeping.
-
-* **Build System:** CMake (3.16+)
-* **Testing:** Catch2 (via CTest)
-
-Please refer to the [**Building from Source**](docs/build.md) and [**Testing**](docs/testing.md) guides for full prerequisites, library installation via your system's package manager, and exact compilation steps.
+For the complete list of options and output formatting flags, see the [**CLI Reference**](docs/cli.md).
 
 ---
 
-## Documentation
+## Build Instructions
 
-For comprehensive guides on usage, building, CLI references, and architecture, please visit the [**AsioScan Documentation Hub**](docs/index.md).
+AsioScan uses modern **CMake (3.20+)** and manages dependencies automatically via `FetchContent`. 
+
+We ship with standard `CMakePresets.json` configurations making building unified across OS environments (Linux, macOS, and Windows):
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/trystanhenriques/AsioScan.git
+cd AsioScan
+
+# 2. Configure for your OS (e.g., ubuntu-latest, macos-latest, or windows-latest)
+cmake --preset ubuntu-latest
+
+# 3. Build the project
+cmake --build --preset ubuntu-latest
+```
+
+For full system requirements and advanced toolchain details, see the [**Building Documentation**](docs/build.md).
 
 ---
 
-## Scope and Status
+## Testing & CI
 
-**Project Status:** *Experimental / Active Development*
-The project is currently establishing its foundation. Internal APIs, behavior, and output format structures are subject to change.
+This project maintains rigorous test coverage isolating the async engine, CLI parser bounds, OS state classifications, and formatter outputs using **Catch2 v3**.
 
-**Current Scope Limitations:**
-Presently, the focus is strictly on reliable TCP connect scanning. Advanced scan types (like SYN stealth scans, which require raw sockets and elevated privileges) are currently out of scope until the core architecture is fully stabilized.
+```bash
+# Run the test suite against the target preset
+ctest --preset ubuntu-latest
+```
+
+The repository is fully integrated with **GitHub Actions**, automatically validating builds and running tests across all major operating systems. 
+
+For more details on the testing framework and test organization, see the [**Testing Documentation**](docs/testing.md).
+
+---
+
+For all other information, please explore the [**AsioScan Documentation Hub**](docs/index.md).
 
 
