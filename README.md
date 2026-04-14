@@ -39,8 +39,11 @@ asioscan scanme.nmap.org -p 1-10000 -c 500 -t 200
 * `-p, --ports` : Ports to scan (e.g., `80`, `22,80,443`, `1-1024`).
 * `-c, --concurrency` : Maximum concurrent async connections (default: `200`).
 * `-t, --timeout` : Per-port TCP connection timeout in milliseconds (default: `500`).
-* `-q, --quiet` : Script-friendly minimum output showing only open ports.
+* `-o, --output` : Write normal text results to a specific file.
 * `--oX, --output-xml` : Write structured XML output to a file for automation.
+* `-v, --verbose` : Show extended detail per port (latency, reasons).
+* `-q, --quiet` : Script-friendly minimum output showing only open ports.
+* `--summary` : Show only the final scan summary statistics.
 
 ### Example Output
 
