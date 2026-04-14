@@ -4,20 +4,21 @@ This guide provides instructions for compiling AsioScan across Windows, macOS, a
 
 ## Prerequisites
 
-To build AsioScan, your system must have the following tools installed:
+To build AsioScan natively, your system must have the following tools installed:
 
-* **C++ Compiler**: A compiler supporting C++20 (e.g., GCC 10+, Clang 10+, or MSVC 2019+).
-* **CMake**: Version 3.16 or newer.
+* **C++ Compiler**: A modern compiler supporting C++20 (e.g., GCC 10+, Clang 10+, or MSVC 2019+).
+* **CMake**: Version 3.20 or newer (Required for `CMakePresets.json` support).
 
 ### Dependency Management
 
-The build system automatically fetches and builds the following internal dependencies using CMake's `FetchContent` module, so you do **not** need to install them manually:
+The build system automatically fetches and builds the following internal dependencies using CMake's `FetchContent` module. You do **not** need to install them manually:
+* **Standalone Asio** (for cross-platform networking)
 * **CLI11** (for command-line argument parsing)
-* **Catch2** (for unit testing)
+* **Catch2 v3** (for unit testing)
 
 ---
 
-## Installing Prerequisites by Platform
+## Installing Toolchains by Platform
 
 ### Linux (Debian/Ubuntu)
 ```bash
@@ -36,72 +37,84 @@ brew install cmake
 
 ---
 
-## Configuring and Building
+## Configuring and Building (Using CMake Presets)
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/trystanhenriques/AsioScan.git
-   cd AsioScan
-   ```
+AsioScan ships with a unified `CMakePresets.json` file. This is the recommended way to build the project, as it automatically aligns generators, build types, and output behaviors across all operating systems.
 
-2. **Generate the build files using CMake:**
-   We recommend performing an out-of-source build by creating a `build` directory. 
-   
-   *For Linux/macOS:*
-   ```bash
-   mkdir build && cd build
-   cmake -DCMAKE_BUILD_TYPE=Release ..
-   ```
+**1. Clone the repository:**
+```bash
+git clone https://github.com/trystanhenriques/AsioScan.git
+cd AsioScan
+```
 
-   *For Windows:*
-   ```powershell
-   mkdir build && cd build
-   cmake ..
-   ```
+**2. Configure the project:**
+Choose the preset that matches your operating system:
+* `ubuntu-latest` (Uses Unix Makefiles)
+* `macos-latest` (Uses Unix Makefiles)
+* `windows-latest` (Uses Visual Studio 17 2022)
 
-3. **Compile the project:**
-   ```bash
-   cmake --build . --config Release
-   ```
+```bash
+# Example for Linux
+cmake --preset ubuntu-latest
+```
+
+**3. Compile the project:**
+This will automatically launch the build process targeting a `Release` configuration.
+```bash
+# Example for Linux
+cmake --build --preset ubuntu-latest
+```
 
 ---
 
 ## Running the Executable
 
-Once the build completes, the executable will be located in the build directory.
+Once the build completes, the executable will be deposited in the `build/` directory structure. 
 
 **Linux / macOS:**
 ```bash
-./asioscan --help
+./build/asioscan --help
 ```
 
 **Windows:**
-Depending on your generator, it may be placed inside a `Release` subdirectory:
+Because Windows uses a multi-config generator (Visual Studio), the binary is placed inside a `Release` subdirectory:
 ```powershell
-.\Release\asioscan.exe --help
+.\build\Release\asioscan.exe --help
 ```
 
 ---
 
 ## Running the Tests
 
-AsioScan includes a thorough suite of unit tests built using **Catch2**. The test executable (`asioscan_tests`) is built alongside the main application. 
+AsioScan includes a thorough suite of unit tests built using **Catch2**. 
 
-You can run the entire test suite heavily integrated with CMake's testing tool, `ctest`:
+You can run the entire test suite directly through CMake's testing tool, `ctest`, using the same preset:
 
 ```bash
-# From inside your build directory
-ctest --output-on-failure --build-config Release
+ctest --preset ubuntu-latest
 ```
+*(Note: Output on failure is automatically enabled via the preset).*
 
 Alternatively, you can invoke the Catch2 test runner directly for more granular control (like running specific tags):
 
 **Linux / macOS:**
 ```bash
-./tests/asioscan_tests
-./tests/asioscan_tests [cli]
+./build/tests/asioscan_tests [cli]
 ```
 
 **Windows:**
 ```powershell
-.\tests\Release\asioscan_tests.exe
+.\build\tests\Release\asioscan_tests.exe [xml]
+```
+
+---
+
+## Custom / Manual Builds
+
+If you prefer not to use presets, you can always build the project manually using standard CMake commands:
+
+```bash
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release
+ctest --output-on-failure -C Release
