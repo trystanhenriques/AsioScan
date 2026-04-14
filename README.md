@@ -54,6 +54,16 @@ For the complete list of options and output formatting flags, see the [**CLI Ref
 
 ---
 
+## Installation
+
+Pre-compiled, ready-to-run binaries are available for Windows, macOS, and Linux on the [**GitHub Releases page**](https://github.com/trystanhenriques/AsioScan/releases).
+
+1. Download the archive for your operating system.
+2. Extract the file.
+3. Run the executable directly from your terminal or command prompt. No dependencies or installations are required!
+
+---
+
 ## Build Instructions
 
 AsioScan uses modern **CMake (3.20+)** and manages dependencies automatically via `FetchContent`. 
