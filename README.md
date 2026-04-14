@@ -29,7 +29,7 @@ asioscan <targets> -p <ports> [options]
 ```
 ```bash
 # Scan a single host on common web ports
-asioscan 127.0.0.1 -p 80,443
+asioscan scanme.nmap.org -p 80,443
 
 # Sweep a broad range of ports aggressively
 asioscan scanme.nmap.org -p 1-10000 -c 500 -t 200
@@ -47,28 +47,8 @@ asioscan scanme.nmap.org -p 1-10000 -c 500 -t 200
 
 ### Example Output
 
-```text
-========================================
-AsioScan Scan Report
-========================================
-...
-----------------------------------------
-Host: 127.0.0.1
-Host scan duration: 512 ms
+<img width="706" height="804" alt="image" src="https://github.com/user-attachments/assets/9215a537-ac06-4214-a155-0a3fa14a2667" />
 
-PORT     STATE
-80       Filtered    
-443      Filtered    
-
-========================================
-Scan Summary
-========================================
-
-Hosts scanned: 1
-Ports scanned: 2
-Open ports:    0
-Total duration: 0.51s
-```
 
 For the complete list of options and output formatting flags, see the [**CLI Reference**](docs/cli.md).
 
