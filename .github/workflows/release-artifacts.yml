@@ -1,0 +1,48 @@
+name: Build Release Artifacts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_file: asioscan-linux-x64.tar.gz
+          - os: windows-latest
+            artifact_file: asioscan-windows-x64.zip
+          - os: macos-latest
+            artifact_file: asioscan-macos-arm64.tar.gz
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Configure project
+        run: cmake --preset ${{ matrix.os }}
+
+      - name: Build project
+        run: cmake --build --preset ${{ matrix.os }}
+
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: tar -czf ${{ matrix.artifact_file }} -C build asioscan
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: tar -czf ${{ matrix.artifact_file }} -C build asioscan
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Compress-Archive -Path build\Release\asioscan.exe -DestinationPath ${{ matrix.artifact_file }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_file }}
+          path: ${{ matrix.artifact_file }}
+          retention-days: 7
